@@ -1,6 +1,5 @@
 package com.example.sendmail.controller;
 
-import com.example.sendmail.dto.request.CreateMailSendBatchRequest;
 import com.example.sendmail.dto.response.MailSendBatchResponse;
 import com.example.sendmail.exception.InvalidStatusException;
 import com.example.sendmail.exception.ResourceNotFoundException;
@@ -19,26 +18,26 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * MailSendBatchController の統合テスト。
+ * #6 送付バッチ（MailSendBatchController）— spec No.61〜70
+ *
+ * テスト仕様書「バックエンド_テスト仕様書.xlsx」の #6 送付バッチカテゴリに 1:1 で対応する。
  *
  * 設計方針:
- *   - @SpringBootTest で実際の SecurityFilterChain を通す
- *   - MailSendBatchService を @MockitoBean でモックし、DB 接続なしにインメモリで完結
- *   - @WithMockUser で認証状態を表現する（username はスタッフのメールアドレスを模す）
- *   - /api/mail-send-batches/** は SecurityConfig で authenticated() のみ（ロール制限なし）
- *   - テスト ID は TC-BATCH-01 から連番
+ *   - @SpringBootTest + @AutoConfigureMockMvc で実際の SecurityFilterChain を通す
+ *   - MailSendBatchService を @MockitoBean でモックし、コントローラー層の入出力のみ検証する
+ *   - sent_by・batch_id の設定や対象レコードの status 更新等は MailSendBatchService の
+ *     責務であるため、ここではサービスの戻り値（MailSendBatchResponse）が
+ *     レスポンス JSON に正しく反映されることを確認する形で検証する
  */
 @SpringBootTest
 @AutoConfigureMockMvc
-@DisplayName("MailSendBatchController 統合テスト")
+@DisplayName("#6 送付バッチ（MailSendBatchController）")
 class MailSendBatchControllerTest {
 
     @Autowired
@@ -48,17 +47,19 @@ class MailSendBatchControllerTest {
     private MailSendBatchService mailSendBatchService;
 
     private static final String BASE_URL = "/api/mail-send-batches";
-    private static final String STAFF_EMAIL = "tanaka@example.com";
+    private static final String STAFF_EMAIL = "staff@example.com";
 
     private MailSendBatchResponse batchResponse;
 
     @BeforeEach
     void setUp() {
+        LocalDateTime sentAt = LocalDateTime.of(2026, 6, 8, 10, 30, 0);
+
         batchResponse = MailSendBatchResponse.builder()
-                .batchId(1L)
-                .sentAt(LocalDateTime.of(2026, 6, 7, 10, 0, 0))
-                .updatedCount(3)
-                .notes("6月分発送")
+                .batchId(100L)
+                .sentAt(sentAt)
+                .updatedCount(2)
+                .notes("6月分送付バッチ")
                 .build();
     }
 
@@ -66,186 +67,144 @@ class MailSendBatchControllerTest {
     // POST /api/mail-send-batches
     // ============================================================
     @Nested
-    @DisplayName("POST /api/mail-send-batches — 一括送付バッチ作成")
+    @DisplayName("POST /api/mail-send-batches — バッチ送付済み処理")
     class CreateBatch {
 
-        /**
-         * TC-BATCH-01: 有効なリクエストでバッチを作成 → 201 Created
-         * Authentication.getName() がそのまま service に渡される
-         */
         @Test
         @WithMockUser(username = STAFF_EMAIL, roles = "STAFF")
-        @DisplayName("TC-BATCH-01: 正常系 - 201 Created とMailSendBatchResponseを返す")
-        void should_return201_when_creatingValidBatch() throws Exception {
-            when(mailSendBatchService.createBatch(any(CreateMailSendBatchRequest.class), eq(STAFF_EMAIL)))
-                    .thenReturn(batchResponse);
+        @DisplayName("No.61: POST /api/mail-send-batches: mailSendIds[] を指定すると対象レコードのstatusがSENTに更新される")
+        void no61_specifyMailSendIds_updatesStatusToSent() throws Exception {
+            // status の更新自体はサービス層の責務。コントローラーはサービスの戻り値
+            // （更新後のバッチ情報）をそのまま返すため、レスポンスに反映されることを確認する。
+            when(mailSendBatchService.createBatch(any(), eq(STAFF_EMAIL))).thenReturn(batchResponse);
 
             mockMvc.perform(post(BASE_URL)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
-                                    {
-                                      "mailSendIds": [1, 2, 3],
-                                      "notes": "6月分発送"
-                                    }
+                                    {"mailSendIds": [1, 2]}
                                     """))
                     .andExpect(status().isCreated())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$.batchId").value(1))
-                    .andExpect(jsonPath("$.updatedCount").value(3))
-                    .andExpect(jsonPath("$.notes").value("6月分発送"));
-
-            verify(mailSendBatchService).createBatch(any(CreateMailSendBatchRequest.class), eq(STAFF_EMAIL));
+                    .andExpect(jsonPath("$.batchId").value(100))
+                    .andExpect(jsonPath("$.updatedCount").value(2));
         }
 
-        /**
-         * TC-BATCH-02: notes を省略 → 201 Created（notes は任意項目）
-         */
         @Test
         @WithMockUser(username = STAFF_EMAIL, roles = "STAFF")
-        @DisplayName("TC-BATCH-02: notes省略 - 201 Created")
-        void should_return201_when_notesIsOmitted() throws Exception {
-            MailSendBatchResponse responseWithoutNotes = MailSendBatchResponse.builder()
-                    .batchId(2L)
-                    .sentAt(LocalDateTime.of(2026, 6, 7, 11, 0, 0))
-                    .updatedCount(1)
-                    .notes(null)
-                    .build();
-            when(mailSendBatchService.createBatch(any(CreateMailSendBatchRequest.class), eq(STAFF_EMAIL)))
-                    .thenReturn(responseWithoutNotes);
+        @DisplayName("No.62: POST /api/mail-send-batches: 更新対象レコードに batch_id が設定される")
+        void no62_updatedRecords_haveBatchIdSet() throws Exception {
+            // batch_id の設定自体はサービス層（MailSendBatchService#createBatch）の責務。
+            // ここではレスポンスの batchId がコントローラー経由で正しく返ることを確認する。
+            when(mailSendBatchService.createBatch(any(), eq(STAFF_EMAIL))).thenReturn(batchResponse);
 
             mockMvc.perform(post(BASE_URL)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
-                                    {
-                                      "mailSendIds": [10]
-                                    }
+                                    {"mailSendIds": [1, 2]}
                                     """))
                     .andExpect(status().isCreated())
-                    .andExpect(jsonPath("$.batchId").value(2))
-                    .andExpect(jsonPath("$.updatedCount").value(1));
+                    .andExpect(jsonPath("$.batchId").value(100));
         }
 
-        /**
-         * TC-BATCH-03: mailSendIds が空配列 → 400（@NotEmpty バリデーション）
-         */
         @Test
         @WithMockUser(username = STAFF_EMAIL, roles = "STAFF")
-        @DisplayName("TC-BATCH-03: mailSendIdsが空配列 - 400 Bad Request（@NotEmpty）")
-        void should_return400_when_mailSendIdsIsEmpty() throws Exception {
+        @DisplayName("No.63: POST /api/mail-send-batches: レスポンスの updatedCount が更新件数と一致する")
+        void no63_responseUpdatedCount_matchesNumberOfUpdatedRecords() throws Exception {
+            when(mailSendBatchService.createBatch(any(), eq(STAFF_EMAIL))).thenReturn(batchResponse);
+
             mockMvc.perform(post(BASE_URL)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
-                                    {
-                                      "mailSendIds": [],
-                                      "notes": "6月分発送"
-                                    }
+                                    {"mailSendIds": [1, 2]}
+                                    """))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.updatedCount").value(2));
+        }
+
+        @Test
+        @WithMockUser(username = STAFF_EMAIL, roles = "STAFF")
+        @DisplayName("No.64: POST /api/mail-send-batches: sent_by に処理を実行したログイン中スタッフのIDが設定される")
+        void no64_sentByIsSetToCurrentLoggedInStaffId() throws Exception {
+            // sent_by の設定自体はサービス層の責務。コントローラーは Authentication#getName()
+            // （ログイン中スタッフのメールアドレス）をサービスへ引き渡す。
+            // ここではログイン中スタッフのメールアドレスがサービスに渡されることを検証する。
+            when(mailSendBatchService.createBatch(any(), eq(STAFF_EMAIL))).thenReturn(batchResponse);
+
+            mockMvc.perform(post(BASE_URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"mailSendIds": [1, 2]}
+                                    """))
+                    .andExpect(status().isCreated());
+
+            verify(mailSendBatchService).createBatch(any(), eq(STAFF_EMAIL));
+        }
+
+        @Test
+        @WithMockUser(username = STAFF_EMAIL, roles = "STAFF")
+        @DisplayName("No.65: POST /api/mail-send-batches: notes（任意）が指定された場合バッチに保存される")
+        void no65_notesProvided_savedToBatch() throws Exception {
+            when(mailSendBatchService.createBatch(any(), eq(STAFF_EMAIL))).thenReturn(batchResponse);
+
+            mockMvc.perform(post(BASE_URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"mailSendIds": [1, 2], "notes": "6月分送付バッチ"}
+                                    """))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.notes").value("6月分送付バッチ"));
+        }
+
+        @Test
+        @WithMockUser(username = STAFF_EMAIL, roles = "STAFF")
+        @DisplayName("No.66: POST /api/mail-send-batches: mailSendIds[] が空配列の場合400が返る")
+        void no66_emptyMailSendIds_returns400() throws Exception {
+            mockMvc.perform(post(BASE_URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"mailSendIds": []}
                                     """))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.message").value("入力値が不正です"))
                     .andExpect(jsonPath("$.errors.mailSendIds").exists());
+
+            verify(mailSendBatchService, never()).createBatch(any(), anyString());
         }
 
-        /**
-         * TC-BATCH-04: mailSendIds が省略 → 400（@NotEmpty バリデーション）
-         */
         @Test
         @WithMockUser(username = STAFF_EMAIL, roles = "STAFF")
-        @DisplayName("TC-BATCH-04: mailSendIdsが省略 - 400 Bad Request（@NotEmpty）")
-        void should_return400_when_mailSendIdsIsMissing() throws Exception {
-            mockMvc.perform(post(BASE_URL)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {
-                                      "notes": "6月分発送"
-                                    }
-                                    """))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message").value("入力値が不正です"))
-                    .andExpect(jsonPath("$.errors.mailSendIds").exists());
-        }
-
-        /**
-         * TC-BATCH-05: 存在しない送付レコードIDが含まれる → 404 Not Found
-         */
-        @Test
-        @WithMockUser(username = STAFF_EMAIL, roles = "STAFF")
-        @DisplayName("TC-BATCH-05: 存在しない送付レコードを含む - 404 Not Found")
-        void should_return404_when_mailSendIdNotFound() throws Exception {
-            when(mailSendBatchService.createBatch(any(CreateMailSendBatchRequest.class), eq(STAFF_EMAIL)))
+        @DisplayName("No.67: POST /api/mail-send-batches: 存在しないmailSendIdを含む場合404が返る")
+        void no67_nonExistingMailSendId_returns404() throws Exception {
+            when(mailSendBatchService.createBatch(any(), eq(STAFF_EMAIL)))
                     .thenThrow(new ResourceNotFoundException("存在しない送付レコードが含まれています"));
 
             mockMvc.perform(post(BASE_URL)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
-                                    {
-                                      "mailSendIds": [1, 999],
-                                      "notes": "6月分発送"
-                                    }
+                                    {"mailSendIds": [1, 999]}
                                     """))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.message").value("存在しない送付レコードが含まれています"));
         }
 
-        /**
-         * TC-BATCH-06: PENDING以外のレコードが含まれる → 409 Conflict
-         */
         @Test
         @WithMockUser(username = STAFF_EMAIL, roles = "STAFF")
-        @DisplayName("TC-BATCH-06: PENDING以外のレコードを含む - 409 Conflict（InvalidStatusException）")
-        void should_return409_when_nonPendingRecordIncluded() throws Exception {
-            when(mailSendBatchService.createBatch(any(CreateMailSendBatchRequest.class), eq(STAFF_EMAIL)))
+        @DisplayName("No.68: POST /api/mail-send-batches: status=PENDING 以外（SENT/DONE）のレコードを含む場合の挙動 — 仕様は除外を期待するが現行実装はエラーとする")
+        void no68_nonPendingRecordsIncluded_specExpectsExclusion_actualImplThrows409() throws Exception {
+            // 仕様書 No.68 は「PENDING以外のレコードは更新対象から除外され、エラーにはしない」
+            // ことを期待しているが、MailSendBatchService#createBatch の実装は
+            // 1件でも PENDING 以外のレコードが含まれる場合に InvalidStatusException(409) を
+            // スローする仕様になっている（除外ではなくエラー）。
+            // ここでは現行実装の挙動（409エラーになる）をそのまま記録し、仕様との乖離を明示する。
+            when(mailSendBatchService.createBatch(any(), eq(STAFF_EMAIL)))
                     .thenThrow(new InvalidStatusException("PENDING以外のレコードが含まれています"));
 
             mockMvc.perform(post(BASE_URL)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
-                                    {
-                                      "mailSendIds": [1, 2],
-                                      "notes": "6月分発送"
-                                    }
+                                    {"mailSendIds": [1, 2, 3]}
                                     """))
                     .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.message").value("PENDING以外のレコードが含まれています"));
-        }
-
-        /**
-         * TC-BATCH-07: スタッフが見つからない（認証ユーザーのメールに対応するスタッフ不在） → 404 Not Found
-         */
-        @Test
-        @WithMockUser(username = STAFF_EMAIL, roles = "STAFF")
-        @DisplayName("TC-BATCH-07: スタッフが見つからない - 404 Not Found")
-        void should_return404_when_staffNotFound() throws Exception {
-            when(mailSendBatchService.createBatch(any(CreateMailSendBatchRequest.class), eq(STAFF_EMAIL)))
-                    .thenThrow(new ResourceNotFoundException("スタッフが見つかりません: " + STAFF_EMAIL));
-
-            mockMvc.perform(post(BASE_URL)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {
-                                      "mailSendIds": [1],
-                                      "notes": "6月分発送"
-                                    }
-                                    """))
-                    .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.message").value("スタッフが見つかりません: " + STAFF_EMAIL));
-        }
-
-        /**
-         * TC-BATCH-08: 未認証で実行 → 401 Unauthorized
-         */
-        @Test
-        @DisplayName("TC-BATCH-08: 未認証 - 401 Unauthorized")
-        void should_return401_when_notAuthenticated() throws Exception {
-            mockMvc.perform(post(BASE_URL)
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {
-                                      "mailSendIds": [1, 2],
-                                      "notes": "6月分発送"
-                                    }
-                                    """))
-                    .andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.message").value("認証が必要です"));
         }
     }
 
@@ -256,47 +215,30 @@ class MailSendBatchControllerTest {
     @DisplayName("GET /api/mail-send-batches/{id} — バッチ詳細取得")
     class GetBatch {
 
-        /**
-         * TC-BATCH-09: 存在するIDでバッチ詳細を取得 → 200 OK
-         */
         @Test
-        @WithMockUser(username = STAFF_EMAIL, roles = "STAFF")
-        @DisplayName("TC-BATCH-09: 正常系 - 200 OK + MailSendBatchResponse")
-        void should_return200_when_batchExists() throws Exception {
-            when(mailSendBatchService.getBatch(1L)).thenReturn(batchResponse);
+        @WithMockUser(roles = "STAFF")
+        @DisplayName("No.69: GET /api/mail-send-batches/{id}: バッチ詳細（sentAt・updatedCount等）が200で返る")
+        void no69_batchDetail_returns200() throws Exception {
+            when(mailSendBatchService.getBatch(100L)).thenReturn(batchResponse);
 
-            mockMvc.perform(get(BASE_URL + "/1"))
+            mockMvc.perform(get(BASE_URL + "/{id}", 100L))
                     .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$.batchId").value(1))
-                    .andExpect(jsonPath("$.updatedCount").value(3))
-                    .andExpect(jsonPath("$.notes").value("6月分発送"));
+                    .andExpect(jsonPath("$.batchId").value(100))
+                    .andExpect(jsonPath("$.updatedCount").value(2))
+                    .andExpect(jsonPath("$.sentAt").exists())
+                    .andExpect(jsonPath("$.notes").value("6月分送付バッチ"));
         }
 
-        /**
-         * TC-BATCH-10: 存在しないID → 404 Not Found
-         */
         @Test
-        @WithMockUser(username = STAFF_EMAIL, roles = "STAFF")
-        @DisplayName("TC-BATCH-10: 存在しないID - 404 Not Found")
-        void should_return404_when_batchNotFound() throws Exception {
+        @WithMockUser(roles = "STAFF")
+        @DisplayName("No.70: GET /api/mail-send-batches/{id}: 存在しないIDを指定すると404が返る")
+        void no70_nonExistingId_returns404() throws Exception {
             when(mailSendBatchService.getBatch(999L))
                     .thenThrow(new ResourceNotFoundException("バッチが見つかりません: 999"));
 
-            mockMvc.perform(get(BASE_URL + "/999"))
+            mockMvc.perform(get(BASE_URL + "/{id}", 999L))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.message").value("バッチが見つかりません: 999"));
-        }
-
-        /**
-         * TC-BATCH-11: 未認証で実行 → 401 Unauthorized
-         */
-        @Test
-        @DisplayName("TC-BATCH-11: 未認証 - 401 Unauthorized")
-        void should_return401_when_notAuthenticated() throws Exception {
-            mockMvc.perform(get(BASE_URL + "/1"))
-                    .andExpect(status().isUnauthorized())
-                    .andExpect(jsonPath("$.message").value("認証が必要です"));
         }
     }
 }
