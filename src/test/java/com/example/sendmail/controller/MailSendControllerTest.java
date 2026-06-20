@@ -23,6 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -395,7 +396,7 @@ class MailSendControllerTest {
         @DisplayName("No.63: GET /api/mail-sends/export: dateFromに不正な日付形式を渡すと400が返る")
         void no63_invalidDateFrom_returns400() throws Exception {
             when(mailSendService.exportCsv(eq("invalid"), isNull(), isNull(), isNull()))
-                    .thenThrow(new IllegalArgumentException("日付の形式が正しくありません（例: 2026-06）"));
+                    .thenThrow(new DateTimeParseException("Text 'invalid-01' could not be parsed", "invalid-01", 0));
 
             mockMvc.perform(get(BASE_URL + "/export")
                             .param("dateFrom", "invalid"))

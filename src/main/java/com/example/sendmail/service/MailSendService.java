@@ -171,7 +171,7 @@ public class MailSendService {
         LocalDate thisMonth = LocalDate.now().withDayOfMonth(1);
         return mailSendRepository.findAll().stream()
                 .filter(ms -> statusEnum == null || ms.getStatus() == statusEnum)
-                .filter(ms -> ms.getSendMonth() != null)
+                .filter(ms -> ms.getSendMonth() != null) // DB NOT NULL 制約があるが防衛的チェック
                 .filter(ms -> sendMonthDate == null || ms.getSendMonth().equals(sendMonthDate))
                 .filter(ms -> userId == null || ms.getUser().getId().equals(userId))
                 .filter(ms -> officeId == null || ms.getOffice().getId().equals(officeId))
