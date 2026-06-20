@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.time.format.DateTimeParseException;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -64,6 +65,13 @@ public class GlobalExceptionHandler {
     public Map<String, String> handleAccessDenied(AccessDeniedException ex) {
         log.warn("Access denied: {}", ex.getMessage());
         return Map.of("message", "権限がありません");
+    }
+
+    @ExceptionHandler(DateTimeParseException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> handleDateTimeParse(DateTimeParseException ex) {
+        log.warn("Invalid date format: {}", ex.getMessage());
+        return Map.of("message", "日付の形式が正しくありません（例: 2026-06）");
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
