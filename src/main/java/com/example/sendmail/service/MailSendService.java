@@ -23,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -120,6 +119,7 @@ public class MailSendService {
     }
 
     private static final DateTimeFormatter SEND_MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy年M月");
+    private static final DateTimeFormatter UPDATED_AT_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final String CSV_HEADER = "送付月,利用者名,事業所名,種別,ステータス,更新日時\r\n";
 
     @Transactional(readOnly = true)
@@ -139,7 +139,7 @@ public class MailSendService {
               .append(csvQuote(ms.getOfficeName())).append(",")
               .append(sendTypeLabel).append(",")
               .append(csvStatusLabel(ms.getStatus())).append(",")
-              .append(ms.getUpdatedAt() != null ? ms.getUpdatedAt().toString().replace("T", " ").substring(0, 19) : "")
+              .append(ms.getUpdatedAt() != null ? ms.getUpdatedAt().format(UPDATED_AT_FORMATTER) : "")
               .append("\r\n");
         }
 
@@ -162,11 +162,7 @@ public class MailSendService {
 
     private LocalDate parseYearMonth(String yearMonth) {
         if (yearMonth == null || yearMonth.isBlank()) return null;
-        try {
-            return LocalDate.parse(yearMonth + "-01");
-        } catch (DateTimeParseException e) {
-            throw new IllegalArgumentException("日付の形式が正しくありません（例: 2026-06）: " + yearMonth);
-        }
+        return LocalDate.parse(yearMonth + "-01");
     }
 
     private List<MailSendResponse> buildFilteredResponses(
@@ -175,6 +171,7 @@ public class MailSendService {
         LocalDate thisMonth = LocalDate.now().withDayOfMonth(1);
         return mailSendRepository.findAll().stream()
                 .filter(ms -> statusEnum == null || ms.getStatus() == statusEnum)
+                .filter(ms -> ms.getSendMonth() != null)
                 .filter(ms -> sendMonthDate == null || ms.getSendMonth().equals(sendMonthDate))
                 .filter(ms -> userId == null || ms.getUser().getId().equals(userId))
                 .filter(ms -> officeId == null || ms.getOffice().getId().equals(officeId))

@@ -392,6 +392,19 @@ class MailSendControllerTest {
 
         @Test
         @WithMockUser(roles = "STAFF")
+        @DisplayName("No.63: GET /api/mail-sends/export: dateFromに不正な日付形式を渡すと400が返る")
+        void no63_invalidDateFrom_returns400() throws Exception {
+            when(mailSendService.exportCsv(eq("invalid"), isNull(), isNull(), isNull()))
+                    .thenThrow(new IllegalArgumentException("日付の形式が正しくありません（例: 2026-06）"));
+
+            mockMvc.perform(get(BASE_URL + "/export")
+                            .param("dateFrom", "invalid"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("日付の形式が正しくありません（例: 2026-06）"));
+        }
+
+        @Test
+        @WithMockUser(roles = "STAFF")
         @DisplayName("No.62: GET /api/mail-sends/export: クエリパラメータがサービスに渡る")
         void no62_queryParamsForwardedToService() throws Exception {
             byte[] fakeCsv = new byte[0];
