@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -39,27 +40,15 @@ public class MailSendService {
     public List<MailSendResponse> listMailSends(
             String status, String sendMonth, Long userId, Long officeId,
             String dateFrom, String dateTo) {
-        LocalDate thisMonth = LocalDate.now().withDayOfMonth(1);
-        SendStatus statusEnum = (status != null && !status.isBlank()) ? SendStatus.valueOf(status) : null;
-        LocalDate sendMonthDate = (sendMonth != null && !sendMonth.isBlank()) ? LocalDate.parse(sendMonth + "-01") : null;
-        LocalDate dateFromDate = (dateFrom != null && !dateFrom.isBlank()) ? LocalDate.parse(dateFrom + "-01") : null;
-        LocalDate dateToDate = (dateTo != null && !dateTo.isBlank()) ? LocalDate.parse(dateTo + "-01") : null;
-
-        return mailSendRepository.findAll().stream()
-                .filter(ms -> statusEnum == null || ms.getStatus() == statusEnum)
-                .filter(ms -> sendMonthDate == null || ms.getSendMonth().equals(sendMonthDate))
-                .filter(ms -> userId == null || ms.getUser().getId().equals(userId))
-                .filter(ms -> officeId == null || ms.getOffice().getId().equals(officeId))
-                .filter(ms -> dateFromDate == null || !ms.getSendMonth().isBefore(dateFromDate))
-                .filter(ms -> dateToDate == null || !ms.getSendMonth().isAfter(dateToDate))
-                .map(ms -> MailSendResponse.from(ms, thisMonth))
-                .toList();
+        return buildFilteredResponses(
+                parseStatus(status), parseYearMonth(sendMonth), userId, officeId,
+                parseYearMonth(dateFrom), parseYearMonth(dateTo));
     }
 
     @Transactional(readOnly = true)
     public List<MailSendByOfficeResponse> listByOffice(String status) {
         LocalDate thisMonth = LocalDate.now().withDayOfMonth(1);
-        SendStatus statusEnum = (status != null && !status.isBlank()) ? SendStatus.valueOf(status) : null;
+        SendStatus statusEnum = parseStatus(status);
 
         return mailSendRepository.findAll().stream()
                 .filter(ms -> statusEnum == null || ms.getStatus() == statusEnum)
@@ -135,26 +124,64 @@ public class MailSendService {
 
     @Transactional(readOnly = true)
     public byte[] exportCsv(String dateFrom, String dateTo, Long userId, Long officeId) {
-        List<MailSendResponse> records = listMailSends(null, null, userId, officeId, dateFrom, dateTo);
+        List<MailSendResponse> records = buildFilteredResponses(
+                null, null, userId, officeId,
+                parseYearMonth(dateFrom), parseYearMonth(dateTo));
 
         StringBuilder sb = new StringBuilder(CSV_HEADER);
         for (MailSendResponse ms : records) {
+            String sendTypeLabel = switch (ms.getSendType()) {
+                case PLAN -> "計画作成";
+                case MONITORING -> "モニタリング";
+            };
             sb.append(ms.getSendMonth() != null ? SEND_MONTH_FORMATTER.format(ms.getSendMonth()) : "").append(",")
               .append(csvQuote(ms.getUserName())).append(",")
               .append(csvQuote(ms.getOfficeName())).append(",")
-              .append(ms.getSendType() == com.example.sendmail.domain.enums.SendType.PLAN ? "計画作成" : "モニタリング").append(",")
+              .append(sendTypeLabel).append(",")
               .append(csvStatusLabel(ms.getStatus())).append(",")
               .append(ms.getUpdatedAt() != null ? ms.getUpdatedAt().toString().replace("T", " ").substring(0, 19) : "")
               .append("\r\n");
         }
 
-        // UTF-8 BOM（Excelで文字化けしないよう付与）
         byte[] bom = {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
         byte[] content = sb.toString().getBytes(StandardCharsets.UTF_8);
         byte[] result = new byte[bom.length + content.length];
         System.arraycopy(bom, 0, result, 0, bom.length);
         System.arraycopy(content, 0, result, bom.length, content.length);
         return result;
+    }
+
+    private SendStatus parseStatus(String status) {
+        if (status == null || status.isBlank()) return null;
+        try {
+            return SendStatus.valueOf(status);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("ステータスの値が不正です: " + status);
+        }
+    }
+
+    private LocalDate parseYearMonth(String yearMonth) {
+        if (yearMonth == null || yearMonth.isBlank()) return null;
+        try {
+            return LocalDate.parse(yearMonth + "-01");
+        } catch (DateTimeParseException e) {
+            throw new IllegalArgumentException("日付の形式が正しくありません（例: 2026-06）: " + yearMonth);
+        }
+    }
+
+    private List<MailSendResponse> buildFilteredResponses(
+            SendStatus statusEnum, LocalDate sendMonthDate, Long userId, Long officeId,
+            LocalDate dateFromDate, LocalDate dateToDate) {
+        LocalDate thisMonth = LocalDate.now().withDayOfMonth(1);
+        return mailSendRepository.findAll().stream()
+                .filter(ms -> statusEnum == null || ms.getStatus() == statusEnum)
+                .filter(ms -> sendMonthDate == null || ms.getSendMonth().equals(sendMonthDate))
+                .filter(ms -> userId == null || ms.getUser().getId().equals(userId))
+                .filter(ms -> officeId == null || ms.getOffice().getId().equals(officeId))
+                .filter(ms -> dateFromDate == null || !ms.getSendMonth().isBefore(dateFromDate))
+                .filter(ms -> dateToDate == null || !ms.getSendMonth().isAfter(dateToDate))
+                .map(ms -> MailSendResponse.from(ms, thisMonth))
+                .toList();
     }
 
     private String csvQuote(String value) {
