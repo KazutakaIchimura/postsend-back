@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -102,9 +103,9 @@ class MailSendControllerTest {
 
         @Test
         @WithMockUser(roles = "STAFF")
-        @DisplayName("No.48: GET /api/mail-sends: 送付レコード一覧が200で返る")
+        @DisplayName("No.48: GET /api/mail-sends: パラメータなしで全件取得が200で返る")
         void no48_listMailSends_returns200() throws Exception {
-            when(mailSendService.listMailSends())
+            when(mailSendService.listMailSends(isNull(), isNull(), isNull(), isNull(), isNull(), isNull()))
                     .thenReturn(List.of(pendingMailSend, overdueMailSend, notOverdueMailSend));
 
             mockMvc.perform(get(BASE_URL))
@@ -118,23 +119,19 @@ class MailSendControllerTest {
 
         @Test
         @WithMockUser(roles = "STAFF")
-        @DisplayName("No.49: GET /api/mail-sends: ステータス・期間・事業所・利用者でフィルターできる")
+        @DisplayName("No.49: GET /api/mail-sends: ステータス・期間・事業所・利用者のクエリパラメータがサービスに渡る")
         void no49_filterByStatusPeriodOfficeUser_returnsFilteredResults() throws Exception {
-            // MailSendController#listMailSends はクエリパラメータを受け付けず、
-            // MailSendService#listMailSends() は常に全件を返す（フィルター機能は未実装）。
-            // 仕様書 No.49 が期待する絞り込みは現行実装に存在しないため、
-            // クエリパラメータを付与しても全件がそのまま返ることを記録する。
-            when(mailSendService.listMailSends())
-                    .thenReturn(List.of(pendingMailSend, overdueMailSend, notOverdueMailSend));
+            when(mailSendService.listMailSends(eq("PENDING"), isNull(), eq(1L), eq(10L), isNull(), isNull()))
+                    .thenReturn(List.of(pendingMailSend));
 
             mockMvc.perform(get(BASE_URL)
                             .param("status", "PENDING")
                             .param("officeId", "10")
                             .param("userId", "1"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.length()").value(3));
+                    .andExpect(jsonPath("$.length()").value(1));
 
-            verify(mailSendService).listMailSends();
+            verify(mailSendService).listMailSends("PENDING", null, 1L, 10L, null, null);
         }
     }
 
@@ -161,7 +158,7 @@ class MailSendControllerTest {
                     .mailSends(List.of(notOverdueMailSend))
                     .build();
 
-            when(mailSendService.listByOffice()).thenReturn(List.of(group1, group2));
+            when(mailSendService.listByOffice(isNull())).thenReturn(List.of(group1, group2));
 
             mockMvc.perform(get(BASE_URL + "/by-office"))
                     .andExpect(status().isOk())
@@ -181,14 +178,12 @@ class MailSendControllerTest {
                     .office(office10)
                     .mailSends(List.of(overdueMailSend))
                     .build();
-            when(mailSendService.listByOffice()).thenReturn(List.of(group));
+            when(mailSendService.listByOffice(isNull())).thenReturn(List.of(group));
 
-            // MailSendResponse#isOverdue (boolean) は Jackson のプロパティ命名規則により
-            // JSON では "overdue"（is接頭辞なし）として出力される
             mockMvc.perform(get(BASE_URL + "/by-office"))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$[0].mailSends[0].status").value("PENDING"))
-                    .andExpect(jsonPath("$[0].mailSends[0].overdue").value(true));
+                    .andExpect(jsonPath("$[0].mailSends[0].isOverdue").value(true));
         }
 
         @Test
@@ -203,18 +198,16 @@ class MailSendControllerTest {
             MailSendByOfficeResponse group2 = MailSendByOfficeResponse.builder()
                     .office(office20).mailSends(List.of(notOverdueMailSend)).build();
 
-            when(mailSendService.listByOffice()).thenReturn(List.of(group1, group2));
+            when(mailSendService.listByOffice(isNull())).thenReturn(List.of(group1, group2));
 
-            // MailSendResponse#isOverdue (boolean) は Jackson のプロパティ命名規則により
-            // JSON では "overdue"（is接頭辞なし）として出力される
             mockMvc.perform(get(BASE_URL + "/by-office"))
                     .andExpect(status().isOk())
                     // pendingMailSend: PENDING かつ送付月が当月 → isOverdue=false
                     .andExpect(jsonPath("$[0].mailSends[0].status").value("PENDING"))
-                    .andExpect(jsonPath("$[0].mailSends[0].overdue").value(false))
+                    .andExpect(jsonPath("$[0].mailSends[0].isOverdue").value(false))
                     // notOverdueMailSend: 送付月は過去だが status=SENT（PENDINGでない）→ isOverdue=false
                     .andExpect(jsonPath("$[1].mailSends[0].status").value("SENT"))
-                    .andExpect(jsonPath("$[1].mailSends[0].overdue").value(false));
+                    .andExpect(jsonPath("$[1].mailSends[0].isOverdue").value(false));
         }
     }
 
@@ -373,6 +366,45 @@ class MailSendControllerTest {
                     .andExpect(status().isNoContent());
 
             verify(mailSendService).deleteMailSend(1L);
+        }
+    }
+
+    // ============================================================
+    // GET /api/mail-sends/export
+    // ============================================================
+    @Nested
+    @DisplayName("GET /api/mail-sends/export — CSV エクスポート")
+    class ExportCsv {
+
+        @Test
+        @WithMockUser(roles = "STAFF")
+        @DisplayName("No.61: GET /api/mail-sends/export: CSVが200で返り Content-Type と Content-Disposition が正しい")
+        void no61_exportCsv_returns200WithCsvHeaders() throws Exception {
+            byte[] fakeCsv = "送付月,利用者名\r\n2026年6月,山田太郎\r\n".getBytes();
+            when(mailSendService.exportCsv(isNull(), isNull(), isNull(), isNull())).thenReturn(fakeCsv);
+
+            mockMvc.perform(get(BASE_URL + "/export"))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string(HttpHeaders.CONTENT_TYPE, "text/csv; charset=UTF-8"))
+                    .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"mail-sends.csv\""))
+                    .andExpect(content().bytes(fakeCsv));
+        }
+
+        @Test
+        @WithMockUser(roles = "STAFF")
+        @DisplayName("No.62: GET /api/mail-sends/export: クエリパラメータがサービスに渡る")
+        void no62_queryParamsForwardedToService() throws Exception {
+            byte[] fakeCsv = new byte[0];
+            when(mailSendService.exportCsv(eq("2026-05"), eq("2026-06"), eq(1L), eq(10L))).thenReturn(fakeCsv);
+
+            mockMvc.perform(get(BASE_URL + "/export")
+                            .param("dateFrom", "2026-05")
+                            .param("dateTo", "2026-06")
+                            .param("userId", "1")
+                            .param("officeId", "10"))
+                    .andExpect(status().isOk());
+
+            verify(mailSendService).exportCsv("2026-05", "2026-06", 1L, 10L);
         }
     }
 }

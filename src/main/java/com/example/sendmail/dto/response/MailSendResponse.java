@@ -5,6 +5,7 @@ import com.example.sendmail.domain.entity.MailSend;
 import com.example.sendmail.domain.enums.SendStatus;
 import com.example.sendmail.domain.enums.SendType;
 import io.swagger.v3.oas.annotations.media.Schema;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import tools.jackson.databind.annotation.JsonSerialize;
 import lombok.Builder;
 import lombok.Getter;
@@ -28,6 +29,7 @@ public class MailSendResponse {
     private LocalDate sendMonth;
 
     private SendStatus status;
+    @JsonProperty("isOverdue")
     private boolean isOverdue;
     private Long batchId;
     private LocalDateTime createdAt;
