@@ -29,7 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class MySqlLegacySchemaMigrationIT {
 
     @Container
-    static final MySQLContainer mysql = new MySQLContainer(DockerImageName.parse("mysql:8.0"));
+    static final MySQLContainer mysql = new MySQLContainer(DockerImageName.parse("mysql:9.4"));
 
     @Test
     @DisplayName("staffs.role(ENUM)→role_id への移行、offices への building 列追加（ADD COLUMN ... AFTER）が成功する")

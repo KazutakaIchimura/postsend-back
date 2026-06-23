@@ -11,7 +11,7 @@ import org.testcontainers.utility.DockerImageName;
 /**
  * 結合テスト（*IT）基底クラス。
  *
- * 本番（Railway MySQL）と同じ MySQL 8.0 を Testcontainers で起動し、
+ * 本番（Railway MySQL）と同じ MySQL 9.4 を Testcontainers で起動し、
  * @ServiceConnection で DataSource を自動的にコンテナへ向ける。
  * コンテナは static フィールドのためサブクラス間で1個を共有し、
  * 起動オーバーヘッドをテストクラス単位ではなく JVM 単位に抑える。
@@ -23,5 +23,5 @@ public abstract class AbstractIntegrationTest {
 
     @Container
     @ServiceConnection
-    static final MySQLContainer MYSQL = new MySQLContainer(DockerImageName.parse("mysql:8.0"));
+    static final MySQLContainer MYSQL = new MySQLContainer(DockerImageName.parse("mysql:9.4"));
 }
