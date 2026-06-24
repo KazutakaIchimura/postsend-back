@@ -99,6 +99,13 @@ public class DatabaseMigrator implements CommandLineRunner {
         }
     }
 
+    /**
+     * 初回起動時のみ初期管理者を作成する。既存の管理者がいる場合は、運用中に
+     * パスワードを変更済みの可能性があるため、パスワードには一切手を加えない
+     * （以前はハッシュが"changeme"と不一致なら強制的に書き戻していたが、
+     * 本番でも毎回このロジックが走るため、変更済みパスワードが意図せず
+     * デフォルトへ巻き戻るリスクがあった）。
+     */
     private void insertAdminIfNotExists() {
         try {
             var existing = staffRepository.findByEmailIgnoreCase("admin@example.com");
@@ -115,15 +122,7 @@ public class DatabaseMigrator implements CommandLineRunner {
                 staffRepository.save(admin);
                 log.info("Migration: initial admin user created");
             } else {
-                Staff admin = existing.get();
-                if (!passwordEncoder.matches("changeme", admin.getPasswordHash())) {
-                    admin.setPasswordHash(passwordEncoder.encode("changeme"));
-                    admin.setForcePasswordChange(true);
-                    staffRepository.save(admin);
-                    log.info("Migration: admin password reset to default");
-                } else {
-                    log.info("Migration: admin user already exists");
-                }
+                log.info("Migration: admin user already exists");
             }
         } catch (Exception e) {
             log.warn("Migration: admin user creation skipped: {}", e.getMessage());

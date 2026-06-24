@@ -49,8 +49,7 @@ public class MailSendService {
         LocalDate thisMonth = LocalDate.now().withDayOfMonth(1);
         SendStatus statusEnum = parseStatus(status);
 
-        return mailSendRepository.findAll().stream()
-                .filter(ms -> statusEnum == null || ms.getStatus() == statusEnum)
+        return mailSendRepository.findFiltered(statusEnum, null, null, null, null, null).stream()
                 .collect(Collectors.groupingBy(ms -> ms.getOffice().getId()))
                 .entrySet().stream()
                 .map(entry -> {
@@ -169,20 +168,22 @@ public class MailSendService {
             SendStatus statusEnum, LocalDate sendMonthDate, Long userId, Long officeId,
             LocalDate dateFromDate, LocalDate dateToDate) {
         LocalDate thisMonth = LocalDate.now().withDayOfMonth(1);
-        return mailSendRepository.findAll().stream()
-                .filter(ms -> statusEnum == null || ms.getStatus() == statusEnum)
-                .filter(ms -> ms.getSendMonth() != null) // DB NOT NULL 制約があるが防衛的チェック
-                .filter(ms -> sendMonthDate == null || ms.getSendMonth().equals(sendMonthDate))
-                .filter(ms -> userId == null || ms.getUser().getId().equals(userId))
-                .filter(ms -> officeId == null || ms.getOffice().getId().equals(officeId))
-                .filter(ms -> dateFromDate == null || !ms.getSendMonth().isBefore(dateFromDate))
-                .filter(ms -> dateToDate == null || !ms.getSendMonth().isAfter(dateToDate))
+        return mailSendRepository.findFiltered(
+                        statusEnum, sendMonthDate, userId, officeId, dateFromDate, dateToDate)
+                .stream()
                 .map(ms -> MailSendResponse.from(ms, thisMonth))
                 .toList();
     }
 
+    private static final String FORMULA_INJECTION_LEADING_CHARS = "=+-@";
+
     private String csvQuote(String value) {
         if (value == null) return "";
+        // Excel等で開いた際に先頭が =,+,-,@ だと数式として評価されてしまう（CSVインジェクション）ため、
+        // 値として表示させるために先頭にシングルクォートを付与する。
+        if (!value.isEmpty() && FORMULA_INJECTION_LEADING_CHARS.indexOf(value.charAt(0)) >= 0) {
+            value = "'" + value;
+        }
         if (value.contains(",") || value.contains("\"") || value.contains("\r") || value.contains("\n")) {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }

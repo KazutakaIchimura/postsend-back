@@ -31,6 +31,32 @@ public interface MailSendRepository extends JpaRepository<MailSend, Long> {
             @Param("status") SendStatus status,
             @Param("month") LocalDate month);
 
+    /**
+     * 一覧表示用に、利用者・事業所をJOIN FETCHしたうえで条件を絞り込んで取得する。
+     * findAll()で全件取得してからJavaのStreamでフィルタする実装だと、件数増加時に
+     * 全件がメモリへロードされ、かつ各レコードのuser/office（LAZY）アクセスでN+1が
+     * 発生するため、クエリ側で絞り込み・JOIN FETCHする。
+     */
+    @Query("""
+            SELECT ms FROM MailSend ms
+            JOIN FETCH ms.user u
+            JOIN FETCH ms.office o
+            WHERE (:status IS NULL OR ms.status = :status)
+              AND (:sendMonth IS NULL OR ms.sendMonth = :sendMonth)
+              AND (:userId IS NULL OR u.id = :userId)
+              AND (:officeId IS NULL OR o.id = :officeId)
+              AND (:dateFrom IS NULL OR ms.sendMonth >= :dateFrom)
+              AND (:dateTo IS NULL OR ms.sendMonth <= :dateTo)
+            ORDER BY ms.sendMonth, o.name, u.name
+            """)
+    List<MailSend> findFiltered(
+            @Param("status") SendStatus status,
+            @Param("sendMonth") LocalDate sendMonth,
+            @Param("userId") Long userId,
+            @Param("officeId") Long officeId,
+            @Param("dateFrom") LocalDate dateFrom,
+            @Param("dateTo") LocalDate dateTo);
+
     @Query("""
             SELECT ms.id as id, o.name as officeName, u.name as userName,
                    ms.sendType as sendType, b.sentAt as sentAt
