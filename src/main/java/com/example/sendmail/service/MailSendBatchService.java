@@ -27,6 +27,7 @@ public class MailSendBatchService {
     private final MailSendBatchRepository mailSendBatchRepository;
     private final MailSendRepository mailSendRepository;
     private final StaffRepository staffRepository;
+    private final AccessLogService accessLogService;
 
     @Transactional
     public MailSendBatchResponse createBatch(CreateMailSendBatchRequest req, String currentUserEmail) {
@@ -55,6 +56,7 @@ public class MailSendBatchService {
         });
         mailSendRepository.saveAll(mailSends);
 
+        accessLogService.log("CREATE", "BATCH", savedBatch.getId());
         return MailSendBatchResponse.builder()
                 .batchId(savedBatch.getId())
                 .sentAt(savedBatch.getSentAt())

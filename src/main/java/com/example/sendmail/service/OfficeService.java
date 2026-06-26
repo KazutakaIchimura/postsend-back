@@ -17,6 +17,7 @@ import java.util.List;
 public class OfficeService {
 
     private final OfficeRepository officeRepository;
+    private final AccessLogService accessLogService;
 
     @Transactional(readOnly = true)
     public List<OfficeResponse> listOffices(boolean includeInactive) {
@@ -39,7 +40,9 @@ public class OfficeService {
         office.setBuilding(req.getBuilding());
         office.setAddress(req.getAddress());
         office.setPhone(req.getPhone());
-        return OfficeResponse.from(officeRepository.save(office));
+        OfficeResponse result = OfficeResponse.from(officeRepository.save(office));
+        accessLogService.log("CREATE", "OFFICE", result.getId());
+        return result;
     }
 
     @Transactional
@@ -50,7 +53,9 @@ public class OfficeService {
         office.setBuilding(req.getBuilding());
         office.setAddress(req.getAddress());
         office.setPhone(req.getPhone());
-        return OfficeResponse.from(officeRepository.save(office));
+        OfficeResponse result = OfficeResponse.from(officeRepository.save(office));
+        accessLogService.log("UPDATE", "OFFICE", id);
+        return result;
     }
 
     @Transactional
@@ -58,13 +63,16 @@ public class OfficeService {
         Office office = findOfficeById(id);
         office.setIsActive(false);
         officeRepository.save(office);
+        accessLogService.log("DEACTIVATE", "OFFICE", id);
     }
 
     @Transactional
     public OfficeResponse activateOffice(Long id) {
         Office office = findOfficeById(id);
         office.setIsActive(true);
-        return OfficeResponse.from(officeRepository.save(office));
+        OfficeResponse result = OfficeResponse.from(officeRepository.save(office));
+        accessLogService.log("ACTIVATE", "OFFICE", id);
+        return result;
     }
 
     private Office findOfficeById(Long id) {

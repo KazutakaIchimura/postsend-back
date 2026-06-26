@@ -27,6 +27,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final OfficeRepository officeRepository;
     private final UserOfficeRepository userOfficeRepository;
+    private final AccessLogService accessLogService;
 
     @Transactional(readOnly = true)
     public List<UserResponse> listUsers(boolean includeInactive) {
@@ -43,6 +44,7 @@ public class UserService {
         List<OfficeResponse> offices = userOfficeRepository.findByUserIdWithOffice(id).stream()
                 .map(uo -> OfficeResponse.from(uo.getOffice()))
                 .toList();
+        accessLogService.log("VIEW", "USER", id);
         return UserResponse.fromWithOffices(user, offices);
     }
 
@@ -54,7 +56,9 @@ public class UserService {
         user.setBirthDate(req.getBirthDate());
         user.setNotes(req.getNotes());
         user.setIsActive(true);
-        return UserResponse.from(userRepository.save(user));
+        UserResponse result = UserResponse.from(userRepository.save(user));
+        accessLogService.log("CREATE", "USER", result.getId());
+        return result;
     }
 
     @Transactional
@@ -71,21 +75,27 @@ public class UserService {
         if (req.getNameKana() != null) user.setNameKana(req.getNameKana());
         if (req.getBirthDate() != null) user.setBirthDate(req.getBirthDate());
         if (req.getNotes() != null) user.setNotes(req.getNotes().orElse(null));
-        return UserResponse.from(userRepository.save(user));
+        UserResponse result = UserResponse.from(userRepository.save(user));
+        accessLogService.log("UPDATE", "USER", id);
+        return result;
     }
 
     @Transactional
     public UserResponse deactivateUser(Long id) {
         User user = findUserById(id);
         user.setIsActive(false);
-        return UserResponse.from(userRepository.save(user));
+        UserResponse result = UserResponse.from(userRepository.save(user));
+        accessLogService.log("DEACTIVATE", "USER", id);
+        return result;
     }
 
     @Transactional
     public UserResponse activateUser(Long id) {
         User user = findUserById(id);
         user.setIsActive(true);
-        return UserResponse.from(userRepository.save(user));
+        UserResponse result = UserResponse.from(userRepository.save(user));
+        accessLogService.log("ACTIVATE", "USER", id);
+        return result;
     }
 
     @Transactional(readOnly = true)
@@ -108,6 +118,7 @@ public class UserService {
         List<OfficeResponse> offices = userOfficeRepository.findByUserIdWithOffice(userId).stream()
                 .map(o -> OfficeResponse.from(o.getOffice()))
                 .toList();
+        accessLogService.log("ADD_OFFICE", "USER", userId);
         return UserResponse.fromWithOffices(user, offices);
     }
 
@@ -117,6 +128,7 @@ public class UserService {
         UserOffice uo = userOfficeRepository.findByUserIdAndOfficeId(userId, officeId)
                 .orElseThrow(() -> new ResourceNotFoundException("紐付けが見つかりません"));
         userOfficeRepository.delete(uo);
+        accessLogService.log("REMOVE_OFFICE", "USER", userId);
     }
 
     private User findUserById(Long id) {

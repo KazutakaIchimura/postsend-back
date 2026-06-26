@@ -33,6 +33,7 @@ public class MailSendService {
     private final UserRepository userRepository;
     private final OfficeRepository officeRepository;
     private final StaffRepository staffRepository;
+    private final AccessLogService accessLogService;
 
     @Transactional(readOnly = true)
     public List<MailSendResponse> listMailSends(
@@ -86,7 +87,9 @@ public class MailSendService {
         ms.setCreatedBy(createdBy);
 
         LocalDate thisMonth = LocalDate.now().withDayOfMonth(1);
-        return MailSendResponse.from(mailSendRepository.save(ms), thisMonth);
+        MailSendResponse result = MailSendResponse.from(mailSendRepository.save(ms), thisMonth);
+        accessLogService.log("CREATE", "MAIL_SEND", result.getId());
+        return result;
     }
 
     @Transactional
@@ -99,7 +102,9 @@ public class MailSendService {
         ms.setSendMonth(sendMonth);
         ms.setSendType(req.getSendType());
         LocalDate thisMonth = LocalDate.now().withDayOfMonth(1);
-        return MailSendResponse.from(mailSendRepository.save(ms), thisMonth);
+        MailSendResponse result = MailSendResponse.from(mailSendRepository.save(ms), thisMonth);
+        accessLogService.log("UPDATE", "MAIL_SEND", id);
+        return result;
     }
 
     @Transactional
@@ -109,6 +114,7 @@ public class MailSendService {
             throw new InvalidStatusException("PENDING以外のレコードは削除できません");
         }
         mailSendRepository.delete(ms);
+        accessLogService.log("DELETE", "MAIL_SEND", id);
     }
 
     private MailSend findMailSendById(Long id) {

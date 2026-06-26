@@ -1,10 +1,12 @@
 package com.example.sendmail.config;
 
 import com.example.sendmail.repository.StaffRepository;
+import com.example.sendmail.service.AccessLogService;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -25,6 +27,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     private final StaffRepository staffRepository;
+    @Lazy private final AccessLogService accessLogService;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -57,17 +60,21 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/login").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                 .requestMatchers("/api/staffs/**").hasRole("ADMIN")
+                .requestMatchers("/api/access-logs/**").hasRole("ADMIN")
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().permitAll()
             )
             .formLogin(form -> form
                 .loginProcessingUrl("/api/auth/login")
                 .successHandler((req, res, authentication) -> {
+                    accessLogService.log("LOGIN", "AUTH", null, authentication.getName());
                     res.setStatus(HttpServletResponse.SC_OK);
                     res.setContentType("application/json;charset=UTF-8");
                     res.getWriter().write("{\"message\":\"ログイン成功\"}");
                 })
                 .failureHandler((req, res, ex) -> {
+                    String attempted = req.getParameter("username");
+                    accessLogService.log("LOGIN_FAILED", "AUTH", null, attempted);
                     res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                     res.setContentType("application/json;charset=UTF-8");
                     res.getWriter().write("{\"message\":\"メールアドレスまたはパスワードが違います\"}");
@@ -79,6 +86,9 @@ public class SecurityConfig {
                 .clearAuthentication(true)
                 .deleteCookies("JSESSIONID")
                 .logoutSuccessHandler((req, res, authentication) -> {
+                    if (authentication != null) {
+                        accessLogService.log("LOGOUT", "AUTH", null, authentication.getName());
+                    }
                     res.setStatus(HttpServletResponse.SC_OK);
                     res.setContentType("application/json;charset=UTF-8");
                     res.getWriter().write("{\"message\":\"ログアウトしました\"}");

@@ -34,6 +34,7 @@ public class DatabaseMigrator implements CommandLineRunner {
         migrateStaffsRoleColumnIfNeeded();
         insertAdminIfNotExists();
         addBuildingColumnIfNotExists();
+        createAccessLogsTableIfNotExists();
     }
 
     private void waitForDatabase() throws InterruptedException {
@@ -142,6 +143,34 @@ public class DatabaseMigrator implements CommandLineRunner {
             }
         } catch (Exception e) {
             log.warn("Migration: building column skipped: {}", e.getMessage());
+        }
+    }
+
+    private void createAccessLogsTableIfNotExists() {
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES " +
+                    "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'access_logs'",
+                    Integer.class);
+            if (count == null || count == 0) {
+                jdbcTemplate.execute(
+                    "CREATE TABLE access_logs (" +
+                    "  id            BIGINT       AUTO_INCREMENT PRIMARY KEY," +
+                    "  staff_email   VARCHAR(255)," +
+                    "  action        VARCHAR(50)  NOT NULL," +
+                    "  resource_type VARCHAR(50)," +
+                    "  resource_id   BIGINT," +
+                    "  details       VARCHAR(500)," +
+                    "  ip_address    VARCHAR(45)," +
+                    "  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+                    "  INDEX idx_access_logs_email    (staff_email)," +
+                    "  INDEX idx_access_logs_created  (created_at)," +
+                    "  INDEX idx_access_logs_resource (resource_type, resource_id)" +
+                    ")");
+                log.info("Migration: access_logs table created");
+            }
+        } catch (Exception e) {
+            log.warn("Migration: access_logs table creation skipped: {}", e.getMessage());
         }
     }
 }

@@ -25,6 +25,7 @@ public class StaffService {
     private final StaffRepository staffRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AccessLogService accessLogService;
 
     private static final Sort NAME_ASC = Sort.by("name").ascending();
 
@@ -48,7 +49,9 @@ public class StaffService {
         staff.setEmail(email);
         staff.setPasswordHash(passwordEncoder.encode(req.getPassword()));
         staff.setRole(role);
-        return StaffResponse.from(staffRepository.save(staff));
+        StaffResponse result = StaffResponse.from(staffRepository.save(staff));
+        accessLogService.log("CREATE", "STAFF", result.getId());
+        return result;
     }
 
     @Transactional
@@ -64,7 +67,9 @@ public class StaffService {
             staff.setPasswordHash(passwordEncoder.encode(req.getPassword()));
             staff.setForcePasswordChange(false);
         }
-        return StaffResponse.from(staffRepository.save(staff));
+        StaffResponse result = StaffResponse.from(staffRepository.save(staff));
+        accessLogService.log("UPDATE", "STAFF", id);
+        return result;
     }
 
     @Transactional
@@ -74,6 +79,7 @@ public class StaffService {
             staff.setIsActive(true);
             staffRepository.save(staff);
         }
+        accessLogService.log("ACTIVATE", "STAFF", id);
     }
 
     @Transactional
@@ -91,6 +97,7 @@ public class StaffService {
             staff.setIsActive(false);
             staffRepository.save(staff);
         }
+        accessLogService.log("DEACTIVATE", "STAFF", id);
     }
 
     private Staff findStaffById(Long id) {

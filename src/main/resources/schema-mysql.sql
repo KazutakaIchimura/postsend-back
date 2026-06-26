@@ -58,6 +58,20 @@ CREATE TABLE IF NOT EXISTS mail_send_batches (
     FOREIGN KEY (sent_by) REFERENCES staffs(id)
 );
 
+CREATE TABLE IF NOT EXISTS access_logs (
+    id            BIGINT       AUTO_INCREMENT PRIMARY KEY,
+    staff_email   VARCHAR(255),
+    action        VARCHAR(50)  NOT NULL,
+    resource_type VARCHAR(50),
+    resource_id   BIGINT,
+    details       VARCHAR(500),
+    ip_address    VARCHAR(45),
+    created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_access_logs_email    (staff_email),
+    INDEX idx_access_logs_created  (created_at),
+    INDEX idx_access_logs_resource (resource_type, resource_id)
+);
+
 CREATE TABLE IF NOT EXISTS mail_sends (
     id         BIGINT AUTO_INCREMENT PRIMARY KEY,
     user_id    BIGINT                        NOT NULL,
