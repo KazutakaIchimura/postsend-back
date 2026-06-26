@@ -15,7 +15,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -23,7 +22,6 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeParseException;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -370,55 +368,4 @@ class MailSendControllerTest {
         }
     }
 
-    // ============================================================
-    // GET /api/mail-sends/export
-    // ============================================================
-    @Nested
-    @DisplayName("GET /api/mail-sends/export — CSV エクスポート")
-    class ExportCsv {
-
-        @Test
-        @WithMockUser(roles = "STAFF")
-        @DisplayName("No.61: GET /api/mail-sends/export: CSVが200で返り Content-Type と Content-Disposition が正しい")
-        void no61_exportCsv_returns200WithCsvHeaders() throws Exception {
-            byte[] fakeCsv = "送付月,利用者名\r\n2026年6月,山田太郎\r\n".getBytes();
-            when(mailSendService.exportCsv(isNull(), isNull(), isNull(), isNull())).thenReturn(fakeCsv);
-
-            mockMvc.perform(get(BASE_URL + "/export"))
-                    .andExpect(status().isOk())
-                    .andExpect(header().string(HttpHeaders.CONTENT_TYPE, "text/csv; charset=UTF-8"))
-                    .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"mail-sends.csv\""))
-                    .andExpect(content().bytes(fakeCsv));
-        }
-
-        @Test
-        @WithMockUser(roles = "STAFF")
-        @DisplayName("No.63: GET /api/mail-sends/export: dateFromに不正な日付形式を渡すと400が返る")
-        void no63_invalidDateFrom_returns400() throws Exception {
-            when(mailSendService.exportCsv(eq("invalid"), isNull(), isNull(), isNull()))
-                    .thenThrow(new DateTimeParseException("Text 'invalid-01' could not be parsed", "invalid-01", 0));
-
-            mockMvc.perform(get(BASE_URL + "/export")
-                            .param("dateFrom", "invalid"))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message").value("日付の形式が正しくありません（例: 2026-06）"));
-        }
-
-        @Test
-        @WithMockUser(roles = "STAFF")
-        @DisplayName("No.62: GET /api/mail-sends/export: クエリパラメータがサービスに渡る")
-        void no62_queryParamsForwardedToService() throws Exception {
-            byte[] fakeCsv = new byte[0];
-            when(mailSendService.exportCsv(eq("2026-05"), eq("2026-06"), eq(1L), eq(10L))).thenReturn(fakeCsv);
-
-            mockMvc.perform(get(BASE_URL + "/export")
-                            .param("dateFrom", "2026-05")
-                            .param("dateTo", "2026-06")
-                            .param("userId", "1")
-                            .param("officeId", "10"))
-                    .andExpect(status().isOk());
-
-            verify(mailSendService).exportCsv("2026-05", "2026-06", 1L, 10L);
-        }
-    }
 }

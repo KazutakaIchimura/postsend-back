@@ -20,7 +20,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -118,37 +117,6 @@ public class MailSendService {
     }
 
     private static final DateTimeFormatter SEND_MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy年M月");
-    private static final DateTimeFormatter UPDATED_AT_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-    private static final String CSV_HEADER = "送付月,利用者名,事業所名,種別,ステータス,更新日時\r\n";
-
-    @Transactional(readOnly = true)
-    public byte[] exportCsv(String dateFrom, String dateTo, Long userId, Long officeId) {
-        List<MailSendResponse> records = buildFilteredResponses(
-                null, null, userId, officeId,
-                parseYearMonth(dateFrom), parseYearMonth(dateTo));
-
-        StringBuilder sb = new StringBuilder(CSV_HEADER);
-        for (MailSendResponse ms : records) {
-            String sendTypeLabel = switch (ms.getSendType()) {
-                case PLAN -> "計画作成";
-                case MONITORING -> "モニタリング";
-            };
-            sb.append(ms.getSendMonth() != null ? SEND_MONTH_FORMATTER.format(ms.getSendMonth()) : "").append(",")
-              .append(csvQuote(ms.getUserName())).append(",")
-              .append(csvQuote(ms.getOfficeName())).append(",")
-              .append(sendTypeLabel).append(",")
-              .append(csvStatusLabel(ms.getStatus())).append(",")
-              .append(ms.getUpdatedAt() != null ? ms.getUpdatedAt().format(UPDATED_AT_FORMATTER) : "")
-              .append("\r\n");
-        }
-
-        byte[] bom = {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
-        byte[] content = sb.toString().getBytes(StandardCharsets.UTF_8);
-        byte[] result = new byte[bom.length + content.length];
-        System.arraycopy(bom, 0, result, 0, bom.length);
-        System.arraycopy(content, 0, result, bom.length, content.length);
-        return result;
-    }
 
     private SendStatus parseStatus(String status) {
         if (status == null || status.isBlank()) return null;
@@ -175,27 +143,4 @@ public class MailSendService {
                 .toList();
     }
 
-    private static final String FORMULA_INJECTION_LEADING_CHARS = "=+-@";
-
-    private String csvQuote(String value) {
-        if (value == null) return "";
-        // Excel等で開いた際に先頭が =,+,-,@ だと数式として評価されてしまう（CSVインジェクション）ため、
-        // 値として表示させるために先頭にシングルクォートを付与する。
-        if (!value.isEmpty() && FORMULA_INJECTION_LEADING_CHARS.indexOf(value.charAt(0)) >= 0) {
-            value = "'" + value;
-        }
-        if (value.contains(",") || value.contains("\"") || value.contains("\r") || value.contains("\n")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
-        }
-        return value;
-    }
-
-    private String csvStatusLabel(SendStatus status) {
-        if (status == null) return "";
-        return switch (status) {
-            case PENDING -> "送付待ち";
-            case SENT -> "送付済み";
-            case DONE -> "完了";
-        };
-    }
 }

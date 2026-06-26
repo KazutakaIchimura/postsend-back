@@ -6,7 +6,6 @@ import com.example.sendmail.dto.response.MailSendResponse;
 import com.example.sendmail.service.MailSendService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -36,19 +35,6 @@ public class MailSendController {
     public List<MailSendByOfficeResponse> listByOffice(
             @RequestParam(required = false) String status) {
         return mailSendService.listByOffice(status);
-    }
-
-    @GetMapping("/export")
-    public ResponseEntity<byte[]> exportCsv(
-            @RequestParam(required = false) String dateFrom,
-            @RequestParam(required = false) String dateTo,
-            @RequestParam(required = false) Long userId,
-            @RequestParam(required = false) Long officeId) {
-        byte[] csv = mailSendService.exportCsv(dateFrom, dateTo, userId, officeId);
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_TYPE, "text/csv; charset=UTF-8")
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"mail-sends.csv\"")
-                .body(csv);
     }
 
     @PostMapping
