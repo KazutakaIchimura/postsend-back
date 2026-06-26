@@ -19,15 +19,17 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173}")
     private String allowedOrigins;
 
+    private List<String> parsedOrigins;
+
     @PostConstruct
     public void logCorsConfiguration() {
-        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+        parsedOrigins = Arrays.stream(allowedOrigins.split(","))
                 .map(String::trim)
                 .toList();
-        log.info("CORS allowed origins (allowCredentials=true): {}", origins);
+        log.info("CORS allowed origins (allowCredentials=true): {}", parsedOrigins);
         // 純粋なワイルドカード（*/http://* /https://*）のみ検出。
         // https://*.example.com のようなサブドメインパターンは特定ドメインに限定されるため対象外。
-        boolean hasBroadWildcard = origins.stream()
+        boolean hasBroadWildcard = parsedOrigins.stream()
                 .anyMatch(o -> o.equals("*") || o.startsWith("http://*") || o.startsWith("https://*"));
         if (hasBroadWildcard) {
             log.warn("CORS: broad wildcard origin detected with allowCredentials=true — "
@@ -38,9 +40,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
-                .allowedOriginPatterns(Arrays.stream(allowedOrigins.split(","))
-                        .map(String::trim)
-                        .toArray(String[]::new))
+                .allowedOriginPatterns(parsedOrigins.toArray(String[]::new))
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true);

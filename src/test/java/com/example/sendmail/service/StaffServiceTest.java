@@ -24,6 +24,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -80,6 +82,7 @@ class StaffServiceTest {
         assertThat(result.getId()).isEqualTo(10L);
         // メールアドレスは小文字正規化されて保存される
         assertThat(result.getEmail()).isEqualTo("tanaka@example.com");
+        verify(accessLogService).log(eq("CREATE"), eq("STAFF"), eq(10L));
     }
 
     @Test

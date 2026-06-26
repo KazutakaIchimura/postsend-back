@@ -132,34 +132,27 @@ public class DatabaseMigrator implements CommandLineRunner {
     }
 
     private void addBuildingColumnIfNotExists() {
-        try {
-            Integer count = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS " +
-                    "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
-                    Integer.class, "offices", "building");
-            if (count == null || count == 0) {
-                jdbcTemplate.execute(
-                        "ALTER TABLE offices ADD COLUMN building VARCHAR(200) NULL AFTER postal_code");
-                log.info("Migration: added column offices.building");
-            }
-        } catch (Exception e) {
-            log.warn("Migration: building column skipped: {}", e.getMessage());
-        }
+        addColumnIfNotExists("offices", "building",
+                "ALTER TABLE offices ADD COLUMN building VARCHAR(200) NULL AFTER postal_code");
     }
 
     private void addOfficeTypeColumnIfNotExists() {
+        addColumnIfNotExists("offices", "office_type",
+                "ALTER TABLE offices ADD COLUMN office_type VARCHAR(100) NULL AFTER name");
+    }
+
+    private void addColumnIfNotExists(String table, String column, String alterDdl) {
         try {
             Integer count = jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS " +
                     "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
-                    Integer.class, "offices", "office_type");
+                    Integer.class, table, column);
             if (count == null || count == 0) {
-                jdbcTemplate.execute(
-                        "ALTER TABLE offices ADD COLUMN office_type VARCHAR(100) NULL AFTER name");
-                log.info("Migration: added column offices.office_type");
+                jdbcTemplate.execute(alterDdl);
+                log.info("Migration: added column {}.{}", table, column);
             }
         } catch (Exception e) {
-            log.warn("Migration: office_type column skipped: {}", e.getMessage());
+            log.warn("Migration: {}.{} column skipped: {}", table, column, e.getMessage());
         }
     }
 
