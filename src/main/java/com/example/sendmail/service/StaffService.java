@@ -47,13 +47,14 @@ public class StaffService {
         staff.setEmail(email);
         staff.setPasswordHash(passwordEncoder.encode(req.getPassword()));
         staff.setRole(role);
+        StaffResponse result;
         try {
-            StaffResponse result = StaffResponse.from(staffRepository.save(staff));
-            accessLogService.log("CREATE", "STAFF", result.getId());
-            return result;
+            result = StaffResponse.from(staffRepository.save(staff));
         } catch (DataIntegrityViolationException e) {
             throw new DuplicateResourceException("このメールアドレスは既に使用されています: " + email);
         }
+        accessLogService.log("CREATE", "STAFF", result.getId());
+        return result;
     }
 
     @Transactional

@@ -25,6 +25,8 @@ public class WebConfig implements WebMvcConfigurer {
                 .map(String::trim)
                 .toList();
         log.info("CORS allowed origins (allowCredentials=true): {}", origins);
+        // 純粋なワイルドカード（*/http://* /https://*）のみ検出。
+        // https://*.example.com のようなサブドメインパターンは特定ドメインに限定されるため対象外。
         boolean hasBroadWildcard = origins.stream()
                 .anyMatch(o -> o.equals("*") || o.startsWith("http://*") || o.startsWith("https://*"));
         if (hasBroadWildcard) {
