@@ -10,4 +10,5 @@ import java.util.Optional;
 public interface StaffRepository extends JpaRepository<Staff, Long> {
     Optional<Staff> findByEmailIgnoreCase(String email);
     List<Staff> findByIsActiveTrue(Sort sort);
+    long countByRole_NameAndIsActiveTrue(String roleName);
 }

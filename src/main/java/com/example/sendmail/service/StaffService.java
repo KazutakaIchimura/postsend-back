@@ -83,6 +83,10 @@ public class StaffService {
         if (staff.getEmail().equalsIgnoreCase(currentEmail)) {
             throw new IllegalArgumentException("自分自身を無効化することはできません");
         }
+        if ("ADMIN".equals(staff.getRole().getName())
+                && staffRepository.countByRole_NameAndIsActiveTrue("ADMIN") <= 1) {
+            throw new IllegalArgumentException("最後のADMINは無効化できません");
+        }
         if (Boolean.TRUE.equals(staff.getIsActive())) {
             staff.setIsActive(false);
             staffRepository.save(staff);

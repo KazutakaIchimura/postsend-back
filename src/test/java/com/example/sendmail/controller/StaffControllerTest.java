@@ -33,11 +33,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   - StaffService を @MockitoBean でモックし、コントローラー層の入出力のみ検証する
  *   - SecurityConfig で /api/staffs/** は ADMIN ロールのみ許可（hasRole("ADMIN")）
  *
- * 注意: StaffService#deactivateStaff には「自己無効化禁止」のチェックのみが実装されており、
- * 仕様書 No.84 が想定する「ADMIN最低1名維持（最後のADMINを無効化しようとすると400）」の
- * チェックはバックエンドに実装されていない（CLAUDE.md の記載によれば、この制御は
- * フロントエンドの StaffListPage#canDisable() 側で行う設計になっている）。
- * No.84 はこの実装上の制約を踏まえ、現行挙動（チェックされず無効化が成功する）を記録する。
+ * No.84: StaffService#deactivateStaff には自己無効化禁止に加え、
+ * 「最後のADMINは無効化できない」チェックをバックエンドでも実装済み（2026-06-26）。
+ * フロントエンドの StaffListPage#canDisable() による二重防衛は引き続き有効。
  */
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -329,26 +327,14 @@ class StaffControllerTest {
 
         @Test
         @WithMockUser(username = "active@example.com", roles = "ADMIN")
-        @DisplayName("No.84: DELETE /api/staffs/{id}: 最後のADMINを無効化しようとすると400エラーが返る（仕様）/ 現行実装ではチェックされず無効化が成功する")
-        void no84_lastAdminDeactivation_specExpects400_actualImplSucceeds() throws Exception {
-            // 仕様書 No.84 は「ADMINが自分以外で1名のみの場合、その最後のADMINを
-            // 無効化しようとすると400エラーが返る（ADMIN最低1名維持）」ことを期待しているが、
-            // StaffService#deactivateStaff には自己無効化チェックのみが実装されており、
-            // 「最後のADMIN」の判定・防止ロジックは存在しない。
-            // CLAUDE.md にも「ADMIN 最低 1 名維持は StaffListPage#canDisable() でチェック」と
-            // あり、フロントエンド側で担保する設計のため、バックエンドは無効化を許可してしまう。
-            // ここでは現行実装の挙動（200で無効化が成功する）をそのまま記録し、仕様との乖離を明示する。
-            StaffResponse deactivated = StaffResponse.builder()
-                    .id(2L).name("最後のADMIN").email("lastadmin@example.com")
-                    .roleId(1L).role("ADMIN").isActive(false).forcePasswordChange(false)
-                    .build();
-            doNothing().when(staffService).deactivateStaff(2L);
-            when(staffService.listStaffs(anyBoolean())).thenReturn(List.of(deactivated));
+        @DisplayName("No.84: DELETE /api/staffs/{id}: 最後のADMINを無効化しようとすると400エラーが返る（ADMIN最低1名維持）")
+        void no84_lastAdminDeactivation_returns400() throws Exception {
+            doThrow(new IllegalArgumentException("最後のADMINは無効化できません"))
+                    .when(staffService).deactivateStaff(2L);
 
             mockMvc.perform(delete(BASE_URL + "/{id}", 2L))
-                    .andExpect(status().isNoContent());
-
-            verify(staffService).deactivateStaff(2L);
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("最後のADMINは無効化できません"));
         }
 
         @Test
