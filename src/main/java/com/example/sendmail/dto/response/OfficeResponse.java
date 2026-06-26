@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 public class OfficeResponse {
     private Long id;
     private String name;
+    private String officeType;
     private String postalCode;
     private String building;
     private String address;
@@ -23,6 +24,7 @@ public class OfficeResponse {
         return OfficeResponse.builder()
                 .id(office.getId())
                 .name(office.getName())
+                .officeType(office.getOfficeType())
                 .postalCode(office.getPostalCode())
                 .building(office.getBuilding())
                 .address(office.getAddress())

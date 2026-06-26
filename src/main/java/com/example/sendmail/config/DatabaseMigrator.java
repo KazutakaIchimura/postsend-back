@@ -34,6 +34,7 @@ public class DatabaseMigrator implements CommandLineRunner {
         migrateStaffsRoleColumnIfNeeded();
         insertAdminIfNotExists();
         addBuildingColumnIfNotExists();
+        addOfficeTypeColumnIfNotExists();
         createAccessLogsTableIfNotExists();
     }
 
@@ -131,18 +132,27 @@ public class DatabaseMigrator implements CommandLineRunner {
     }
 
     private void addBuildingColumnIfNotExists() {
+        addColumnIfNotExists("offices", "building",
+                "ALTER TABLE offices ADD COLUMN building VARCHAR(200) NULL AFTER postal_code");
+    }
+
+    private void addOfficeTypeColumnIfNotExists() {
+        addColumnIfNotExists("offices", "office_type",
+                "ALTER TABLE offices ADD COLUMN office_type VARCHAR(100) NULL AFTER name");
+    }
+
+    private void addColumnIfNotExists(String table, String column, String alterDdl) {
         try {
             Integer count = jdbcTemplate.queryForObject(
                     "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS " +
                     "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
-                    Integer.class, "offices", "building");
+                    Integer.class, table, column);
             if (count == null || count == 0) {
-                jdbcTemplate.execute(
-                        "ALTER TABLE offices ADD COLUMN building VARCHAR(200) NULL AFTER postal_code");
-                log.info("Migration: added column offices.building");
+                jdbcTemplate.execute(alterDdl);
+                log.info("Migration: added column {}.{}", table, column);
             }
         } catch (Exception e) {
-            log.warn("Migration: building column skipped: {}", e.getMessage());
+            log.warn("Migration: {}.{} column skipped: {}", table, column, e.getMessage());
         }
     }
 

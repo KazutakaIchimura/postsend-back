@@ -10,6 +10,7 @@ import com.example.sendmail.exception.ResourceNotFoundException;
 import com.example.sendmail.repository.RoleRepository;
 import com.example.sendmail.repository.StaffRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -40,16 +41,18 @@ public class StaffService {
     @Transactional
     public StaffResponse createStaff(CreateStaffRequest req) {
         String email = req.getEmail().toLowerCase();
-        if (staffRepository.findByEmailIgnoreCase(email).isPresent()) {
-            throw new DuplicateResourceException("このメールアドレスは既に使用されています: " + email);
-        }
         Role role = findRoleByName(req.getRole());
         Staff staff = new Staff();
         staff.setName(req.getName());
         staff.setEmail(email);
         staff.setPasswordHash(passwordEncoder.encode(req.getPassword()));
         staff.setRole(role);
-        StaffResponse result = StaffResponse.from(staffRepository.save(staff));
+        StaffResponse result;
+        try {
+            result = StaffResponse.from(staffRepository.save(staff));
+        } catch (DataIntegrityViolationException e) {
+            throw new DuplicateResourceException("このメールアドレスは既に使用されています: " + email);
+        }
         accessLogService.log("CREATE", "STAFF", result.getId());
         return result;
     }

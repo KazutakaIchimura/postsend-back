@@ -13,6 +13,9 @@ public class UpdateOfficeRequest {
     @Size(max = 200)
     private String name;
 
+    @Size(max = 100)
+    private String officeType;
+
     @Size(max = 8)
     private String postalCode;
 

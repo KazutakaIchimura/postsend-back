@@ -23,6 +23,9 @@ public class Office {
     @Column(nullable = false, length = 200)
     private String name;
 
+    @Column(name = "office_type", length = 100)
+    private String officeType;
+
     @Column(name = "postal_code", length = 8)
     private String postalCode;
 
