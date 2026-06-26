@@ -36,6 +36,7 @@ public class OfficeService {
     public OfficeResponse createOffice(CreateOfficeRequest req) {
         Office office = new Office();
         office.setName(req.getName());
+        office.setOfficeType(req.getOfficeType());
         office.setPostalCode(req.getPostalCode());
         office.setBuilding(req.getBuilding());
         office.setAddress(req.getAddress());
@@ -49,6 +50,7 @@ public class OfficeService {
     public OfficeResponse updateOffice(Long id, UpdateOfficeRequest req) {
         Office office = findOfficeById(id);
         office.setName(req.getName());
+        office.setOfficeType(req.getOfficeType());
         office.setPostalCode(req.getPostalCode());
         office.setBuilding(req.getBuilding());
         office.setAddress(req.getAddress());

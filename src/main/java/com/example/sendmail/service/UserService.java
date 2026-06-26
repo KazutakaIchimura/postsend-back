@@ -72,7 +72,7 @@ public class UserService {
             if (req.getName().isBlank()) throw new IllegalArgumentException("名前は空白のみでは設定できません");
             user.setName(req.getName());
         }
-        if (req.getNameKana() != null) user.setNameKana(req.getNameKana());
+        if (req.getNameKana() != null) user.setNameKana(req.getNameKana().orElse(null));
         if (req.getBirthDate() != null) user.setBirthDate(req.getBirthDate());
         if (req.getNotes() != null) user.setNotes(req.getNotes().orElse(null));
         UserResponse result = UserResponse.from(userRepository.save(user));

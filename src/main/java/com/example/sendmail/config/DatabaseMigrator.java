@@ -34,6 +34,7 @@ public class DatabaseMigrator implements CommandLineRunner {
         migrateStaffsRoleColumnIfNeeded();
         insertAdminIfNotExists();
         addBuildingColumnIfNotExists();
+        addOfficeTypeColumnIfNotExists();
         createAccessLogsTableIfNotExists();
     }
 
@@ -143,6 +144,22 @@ public class DatabaseMigrator implements CommandLineRunner {
             }
         } catch (Exception e) {
             log.warn("Migration: building column skipped: {}", e.getMessage());
+        }
+    }
+
+    private void addOfficeTypeColumnIfNotExists() {
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS " +
+                    "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
+                    Integer.class, "offices", "office_type");
+            if (count == null || count == 0) {
+                jdbcTemplate.execute(
+                        "ALTER TABLE offices ADD COLUMN office_type VARCHAR(100) NULL AFTER name");
+                log.info("Migration: added column offices.office_type");
+            }
+        } catch (Exception e) {
+            log.warn("Migration: office_type column skipped: {}", e.getMessage());
         }
     }
 

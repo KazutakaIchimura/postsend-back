@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS offices (
     id          BIGINT AUTO_INCREMENT PRIMARY KEY,
     name        VARCHAR(200) NOT NULL,
+    office_type VARCHAR(100),
     postal_code VARCHAR(8),
     building    VARCHAR(200),
     address     VARCHAR(500),
