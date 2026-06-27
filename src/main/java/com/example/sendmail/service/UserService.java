@@ -1,6 +1,7 @@
 package com.example.sendmail.service;
 
 import com.example.sendmail.domain.entity.Office;
+import com.example.sendmail.domain.entity.Staff;
 import com.example.sendmail.domain.entity.User;
 import com.example.sendmail.domain.entity.UserOffice;
 import com.example.sendmail.dto.request.CreateUserRequest;
@@ -9,6 +10,7 @@ import com.example.sendmail.dto.response.OfficeResponse;
 import com.example.sendmail.dto.response.UserResponse;
 import com.example.sendmail.exception.ResourceNotFoundException;
 import com.example.sendmail.repository.OfficeRepository;
+import com.example.sendmail.repository.StaffRepository;
 import com.example.sendmail.repository.UserOfficeRepository;
 import com.example.sendmail.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +29,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final OfficeRepository officeRepository;
     private final UserOfficeRepository userOfficeRepository;
+    private final StaffRepository staffRepository;
     private final AccessLogService accessLogService;
 
     @Transactional(readOnly = true)
@@ -55,7 +58,14 @@ public class UserService {
         user.setNameKana(req.getNameKana());
         user.setBirthDate(req.getBirthDate());
         user.setNotes(req.getNotes());
+        user.setRecipientNumber(req.getRecipientNumber());
+        user.setDisabilitySupportCategory(req.getDisabilitySupportCategory());
         user.setIsActive(true);
+        if (req.getAssignedStaffId() != null) {
+            Staff staff = staffRepository.findById(req.getAssignedStaffId())
+                    .orElseThrow(() -> new ResourceNotFoundException("担当スタッフが見つかりません: " + req.getAssignedStaffId()));
+            user.setAssignedStaff(staff);
+        }
         UserResponse result = UserResponse.from(userRepository.save(user));
         accessLogService.log("CREATE", "USER", result.getId());
         return result;
@@ -64,7 +74,9 @@ public class UserService {
     @Transactional
     public UserResponse updateUser(Long id, UpdateUserRequest req) {
         if (req.getName() == null && req.getNameKana() == null
-                && req.getBirthDate() == null && req.getNotes() == null) {
+                && req.getBirthDate() == null && req.getNotes() == null
+                && req.getRecipientNumber() == null && req.getDisabilitySupportCategory() == null
+                && req.getAssignedStaffId() == null) {
             throw new IllegalStateException("更新するフィールドが指定されていません");
         }
         User user = findUserById(id);
@@ -75,6 +87,18 @@ public class UserService {
         if (req.getNameKana() != null) user.setNameKana(req.getNameKana().orElse(null));
         if (req.getBirthDate() != null) user.setBirthDate(req.getBirthDate());
         if (req.getNotes() != null) user.setNotes(req.getNotes().orElse(null));
+        if (req.getRecipientNumber() != null) user.setRecipientNumber(req.getRecipientNumber().orElse(null));
+        if (req.getDisabilitySupportCategory() != null) user.setDisabilitySupportCategory(req.getDisabilitySupportCategory().orElse(null));
+        if (req.getAssignedStaffId() != null) {
+            Long staffId = req.getAssignedStaffId().orElse(null);
+            if (staffId == null) {
+                user.setAssignedStaff(null);
+            } else {
+                Staff staff = staffRepository.findById(staffId)
+                        .orElseThrow(() -> new ResourceNotFoundException("担当スタッフが見つかりません: " + staffId));
+                user.setAssignedStaff(staff);
+            }
+        }
         UserResponse result = UserResponse.from(userRepository.save(user));
         accessLogService.log("UPDATE", "USER", id);
         return result;

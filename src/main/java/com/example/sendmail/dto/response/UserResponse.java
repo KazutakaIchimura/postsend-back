@@ -17,9 +17,17 @@ public class UserResponse {
     private String nameKana;
     private LocalDate birthDate;
     private String notes;
+    private String recipientNumber;
+    private String disabilitySupportCategory;
     private Boolean isActive;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Long assignedStaffId;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String assignedStaffName;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private List<OfficeResponse> offices;
@@ -31,9 +39,13 @@ public class UserResponse {
                 .nameKana(user.getNameKana())
                 .birthDate(user.getBirthDate())
                 .notes(user.getNotes())
+                .recipientNumber(user.getRecipientNumber())
+                .disabilitySupportCategory(user.getDisabilitySupportCategory())
                 .isActive(user.getIsActive())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
+                .assignedStaffId(user.getAssignedStaff() != null ? user.getAssignedStaff().getId() : null)
+                .assignedStaffName(user.getAssignedStaff() != null ? user.getAssignedStaff().getName() : null)
                 .build();
     }
 
@@ -44,9 +56,13 @@ public class UserResponse {
                 .nameKana(user.getNameKana())
                 .birthDate(user.getBirthDate())
                 .notes(user.getNotes())
+                .recipientNumber(user.getRecipientNumber())
+                .disabilitySupportCategory(user.getDisabilitySupportCategory())
                 .isActive(user.getIsActive())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
+                .assignedStaffId(user.getAssignedStaff() != null ? user.getAssignedStaff().getId() : null)
+                .assignedStaffName(user.getAssignedStaff() != null ? user.getAssignedStaff().getName() : null)
                 .offices(offices)
                 .build();
     }

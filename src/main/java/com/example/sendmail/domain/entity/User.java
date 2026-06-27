@@ -38,6 +38,16 @@ public class User {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @Column(name = "recipient_number", length = 20)
+    private String recipientNumber;
+
+    @Column(name = "disability_support_category", length = 20)
+    private String disabilitySupportCategory;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_staff_id")
+    private Staff assignedStaff;
+
     @Column(name = "is_active")
     private Boolean isActive = true;
 
