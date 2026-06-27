@@ -28,4 +28,14 @@ public class UpdateUserRequest {
     // null=フィールド未送信（変更しない）、Optional.empty()=明示的null送信（クリア）
     @JsonSetter(nulls = Nulls.AS_EMPTY)
     private Optional<@Size(max = 2000, message = "notesは2000文字以内で入力してください") String> notes = null;
+
+    @JsonSetter(nulls = Nulls.AS_EMPTY)
+    private Optional<@Size(max = 20) String> recipientNumber = null;
+
+    @JsonSetter(nulls = Nulls.AS_EMPTY)
+    private Optional<@Size(max = 20) String> disabilitySupportCategory = null;
+
+    // null=未送信（変更しない）、Optional.empty()=担当者クリア、Optional.of(id)=担当者設定
+    @JsonSetter(nulls = Nulls.AS_EMPTY)
+    private Optional<Long> assignedStaffId = null;
 }

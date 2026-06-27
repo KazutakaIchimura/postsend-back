@@ -39,6 +39,9 @@ public class Staff {
     @Column(name = "force_password_change")
     private Boolean forcePasswordChange = true;
 
+    @Column(name = "accessibility_settings", columnDefinition = "TEXT")
+    private String accessibilitySettings;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

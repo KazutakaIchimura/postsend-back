@@ -24,4 +24,12 @@ public class CreateUserRequest {
 
     @Size(max = 2000)
     private String notes;
+
+    @Size(max = 20)
+    private String recipientNumber;
+
+    @Size(max = 20)
+    private String disabilitySupportCategory;
+
+    private Long assignedStaffId;
 }

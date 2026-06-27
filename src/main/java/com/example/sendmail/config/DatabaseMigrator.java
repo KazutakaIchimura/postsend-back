@@ -36,6 +36,11 @@ public class DatabaseMigrator implements CommandLineRunner {
         addBuildingColumnIfNotExists();
         addOfficeTypeColumnIfNotExists();
         createAccessLogsTableIfNotExists();
+        addAssignedStaffColumnIfNotExists();
+        addRecipientNumberColumnIfNotExists();
+        addDisabilityCategoryColumnIfNotExists();
+        createMonitoringCyclesTableIfNotExists();
+        addAccessibilitySettingsColumnIfNotExists();
     }
 
     private void waitForDatabase() throws InterruptedException {
@@ -134,6 +139,66 @@ public class DatabaseMigrator implements CommandLineRunner {
     private void addBuildingColumnIfNotExists() {
         addColumnIfNotExists("offices", "building",
                 "ALTER TABLE offices ADD COLUMN building VARCHAR(200) NULL AFTER postal_code");
+    }
+
+    private void addRecipientNumberColumnIfNotExists() {
+        addColumnIfNotExists("users", "recipient_number",
+                "ALTER TABLE users ADD COLUMN recipient_number VARCHAR(20) NULL AFTER notes");
+    }
+
+    private void addDisabilityCategoryColumnIfNotExists() {
+        addColumnIfNotExists("users", "disability_support_category",
+                "ALTER TABLE users ADD COLUMN disability_support_category VARCHAR(20) NULL AFTER recipient_number");
+    }
+
+    private void createMonitoringCyclesTableIfNotExists() {
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES " +
+                    "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'monitoring_cycles'",
+                    Integer.class);
+            if (count == null || count == 0) {
+                jdbcTemplate.execute(
+                    "CREATE TABLE monitoring_cycles (" +
+                    "  id                   BIGINT       AUTO_INCREMENT PRIMARY KEY," +
+                    "  user_id              BIGINT       NOT NULL UNIQUE," +
+                    "  cycle_months         TINYINT      NOT NULL DEFAULT 6," +
+                    "  next_monitoring_date DATE," +
+                    "  next_plan_draft_date DATE," +
+                    "  next_plan_date       DATE," +
+                    "  notes                VARCHAR(500)," +
+                    "  created_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP," +
+                    "  updated_at           DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP," +
+                    "  CONSTRAINT fk_mc_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE" +
+                    ")");
+                log.info("Migration: monitoring_cycles table created");
+            }
+        } catch (Exception e) {
+            log.warn("Migration: monitoring_cycles table creation skipped: {}", e.getMessage());
+        }
+    }
+
+    private void addAssignedStaffColumnIfNotExists() {
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS " +
+                    "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'users' AND COLUMN_NAME = 'assigned_staff_id'",
+                    Integer.class);
+            if (count == null || count == 0) {
+                jdbcTemplate.execute("ALTER TABLE users ADD COLUMN assigned_staff_id BIGINT NULL");
+                jdbcTemplate.execute(
+                    "ALTER TABLE users ADD CONSTRAINT fk_users_assigned_staff " +
+                    "FOREIGN KEY (assigned_staff_id) REFERENCES staffs(id) ON DELETE SET NULL");
+                log.info("Migration: users.assigned_staff_id column added");
+            }
+        } catch (Exception e) {
+            log.warn("Migration: users.assigned_staff_id column skipped: {}", e.getMessage());
+        }
+    }
+
+    private void addAccessibilitySettingsColumnIfNotExists() {
+        addColumnIfNotExists("staffs", "accessibility_settings",
+                "ALTER TABLE staffs ADD COLUMN accessibility_settings TEXT NULL");
     }
 
     private void addOfficeTypeColumnIfNotExists() {
