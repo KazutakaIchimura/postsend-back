@@ -35,26 +35,26 @@ public class OfficeService {
     @Transactional
     public OfficeResponse createOffice(CreateOfficeRequest req) {
         Office office = new Office();
-        office.setName(req.getName());
-        office.setOfficeType(req.getOfficeType());
-        office.setPostalCode(req.getPostalCode());
-        office.setBuilding(req.getBuilding());
-        office.setAddress(req.getAddress());
-        office.setPhone(req.getPhone());
+        office.setName(req.name());
+        office.setOfficeType(req.officeType());
+        office.setPostalCode(req.postalCode());
+        office.setBuilding(req.building());
+        office.setAddress(req.address());
+        office.setPhone(req.phone());
         OfficeResponse result = OfficeResponse.from(officeRepository.save(office));
-        accessLogService.log("CREATE", "OFFICE", result.getId());
+        accessLogService.log("CREATE", "OFFICE", result.id());
         return result;
     }
 
     @Transactional
     public OfficeResponse updateOffice(Long id, UpdateOfficeRequest req) {
         Office office = findOfficeById(id);
-        office.setName(req.getName());
-        office.setOfficeType(req.getOfficeType());
-        office.setPostalCode(req.getPostalCode());
-        office.setBuilding(req.getBuilding());
-        office.setAddress(req.getAddress());
-        office.setPhone(req.getPhone());
+        office.setName(req.name());
+        office.setOfficeType(req.officeType());
+        office.setPostalCode(req.postalCode());
+        office.setBuilding(req.building());
+        office.setAddress(req.address());
+        office.setPhone(req.phone());
         OfficeResponse result = OfficeResponse.from(officeRepository.save(office));
         accessLogService.log("UPDATE", "OFFICE", id);
         return result;

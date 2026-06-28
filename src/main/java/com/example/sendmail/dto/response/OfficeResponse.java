@@ -1,37 +1,34 @@
 package com.example.sendmail.dto.response;
 
 import com.example.sendmail.domain.entity.Office;
-import lombok.Builder;
-import lombok.Getter;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.LocalDateTime;
 
-@Getter
-@Builder
-public class OfficeResponse {
-    private Long id;
-    private String name;
-    private String officeType;
-    private String postalCode;
-    private String building;
-    private String address;
-    private String phone;
-    private Boolean isActive;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
+public record OfficeResponse(
+        Long id,
+        String name,
+        String officeType,
+        String postalCode,
+        String building,
+        String address,
+        String phone,
+        @JsonProperty("isActive") Boolean isActive,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
+) {
     public static OfficeResponse from(Office office) {
-        return OfficeResponse.builder()
-                .id(office.getId())
-                .name(office.getName())
-                .officeType(office.getOfficeType())
-                .postalCode(office.getPostalCode())
-                .building(office.getBuilding())
-                .address(office.getAddress())
-                .phone(office.getPhone())
-                .isActive(office.getIsActive())
-                .createdAt(office.getCreatedAt())
-                .updatedAt(office.getUpdatedAt())
-                .build();
+        return new OfficeResponse(
+                office.getId(),
+                office.getName(),
+                office.getOfficeType(),
+                office.getPostalCode(),
+                office.getBuilding(),
+                office.getAddress(),
+                office.getPhone(),
+                office.getIsActive(),
+                office.getCreatedAt(),
+                office.getUpdatedAt()
+        );
     }
 }

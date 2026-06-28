@@ -79,7 +79,7 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN')")
     public UserResponse addOfficeToUser(@PathVariable Long userId,
                                         @Valid @RequestBody AddOfficeToUserRequest req) {
-        return userService.addOfficeToUser(userId, req.getOfficeId());
+        return userService.addOfficeToUser(userId, req.officeId());
     }
 
     @DeleteMapping("/{userId}/offices/{officeId}")

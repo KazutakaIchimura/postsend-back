@@ -144,11 +144,7 @@ class MailSendServiceTest {
         @Test
         @DisplayName("send_monthが月途中の日付でも月初日に正規化されて重複チェックと保存が行われる")
         void createMailSend_sendMonthNormalizedToFirstDay() {
-            CreateMailSendRequest req = new CreateMailSendRequest();
-            req.setUserId(1L);
-            req.setOfficeId(10L);
-            req.setSendType(SendType.PLAN);
-            req.setSendMonth(LocalDate.of(2026, 6, 15)); // 月の途中
+            CreateMailSendRequest req = new CreateMailSendRequest(1L, 10L, SendType.PLAN, LocalDate.of(2026, 6, 15)); // 月の途中
 
             LocalDate expectedFirstDay = LocalDate.of(2026, 6, 1);
 
@@ -163,7 +159,7 @@ class MailSendServiceTest {
 
             MailSendResponse result = mailSendService.createMailSend(req, "staff@example.com");
 
-            assertThat(result.getSendMonth()).isEqualTo(expectedFirstDay);
+            assertThat(result.sendMonth()).isEqualTo(expectedFirstDay);
             // 重複チェックは月初日で行われる
             verify(mailSendRepository).existsByUserIdAndOfficeIdAndSendTypeAndSendMonth(
                     1L, 10L, SendType.PLAN, expectedFirstDay);
@@ -172,11 +168,7 @@ class MailSendServiceTest {
         @Test
         @DisplayName("同一組み合わせが存在する場合DuplicateResourceExceptionをスロー")
         void createMailSend_duplicate_throwsDuplicateResourceException() {
-            CreateMailSendRequest req = new CreateMailSendRequest();
-            req.setUserId(1L);
-            req.setOfficeId(10L);
-            req.setSendType(SendType.PLAN);
-            req.setSendMonth(LocalDate.of(2026, 6, 1));
+            CreateMailSendRequest req = new CreateMailSendRequest(1L, 10L, SendType.PLAN, LocalDate.of(2026, 6, 1));
 
             when(mailSendRepository.existsByUserIdAndOfficeIdAndSendTypeAndSendMonth(
                     1L, 10L, SendType.PLAN, LocalDate.of(2026, 6, 1))).thenReturn(true);
@@ -191,11 +183,7 @@ class MailSendServiceTest {
         @Test
         @DisplayName("存在しないuserIdを指定するとResourceNotFoundExceptionをスロー")
         void createMailSend_nonExistingUser_throwsResourceNotFoundException() {
-            CreateMailSendRequest req = new CreateMailSendRequest();
-            req.setUserId(999L);
-            req.setOfficeId(10L);
-            req.setSendType(SendType.PLAN);
-            req.setSendMonth(LocalDate.of(2026, 6, 1));
+            CreateMailSendRequest req = new CreateMailSendRequest(999L, 10L, SendType.PLAN, LocalDate.of(2026, 6, 1));
 
             when(mailSendRepository.existsByUserIdAndOfficeIdAndSendTypeAndSendMonth(
                     999L, 10L, SendType.PLAN, LocalDate.of(2026, 6, 1))).thenReturn(false);
@@ -211,11 +199,7 @@ class MailSendServiceTest {
         @Test
         @DisplayName("存在しないofficeIdを指定するとResourceNotFoundExceptionをスロー")
         void createMailSend_nonExistingOffice_throwsResourceNotFoundException() {
-            CreateMailSendRequest req = new CreateMailSendRequest();
-            req.setUserId(1L);
-            req.setOfficeId(999L);
-            req.setSendType(SendType.PLAN);
-            req.setSendMonth(LocalDate.of(2026, 6, 1));
+            CreateMailSendRequest req = new CreateMailSendRequest(1L, 999L, SendType.PLAN, LocalDate.of(2026, 6, 1));
 
             when(mailSendRepository.existsByUserIdAndOfficeIdAndSendTypeAndSendMonth(
                     1L, 999L, SendType.PLAN, LocalDate.of(2026, 6, 1))).thenReturn(false);
@@ -230,11 +214,7 @@ class MailSendServiceTest {
         @Test
         @DisplayName("登録成功時にaccessLogService.logが呼ばれる")
         void createMailSend_success_logsCreate() {
-            CreateMailSendRequest req = new CreateMailSendRequest();
-            req.setUserId(1L);
-            req.setOfficeId(10L);
-            req.setSendType(SendType.MONITORING);
-            req.setSendMonth(LocalDate.of(2026, 6, 1));
+            CreateMailSendRequest req = new CreateMailSendRequest(1L, 10L, SendType.MONITORING, LocalDate.of(2026, 6, 1));
 
             when(mailSendRepository.existsByUserIdAndOfficeIdAndSendTypeAndSendMonth(any(), any(), any(), any()))
                     .thenReturn(false);
@@ -265,11 +245,7 @@ class MailSendServiceTest {
             MailSend sentMs = buildMailSend(1L, SendStatus.SENT, LocalDate.of(2026, 6, 1));
             when(mailSendRepository.findById(1L)).thenReturn(Optional.of(sentMs));
 
-            CreateMailSendRequest req = new CreateMailSendRequest();
-            req.setUserId(1L);
-            req.setOfficeId(10L);
-            req.setSendType(SendType.PLAN);
-            req.setSendMonth(LocalDate.of(2026, 7, 1));
+            CreateMailSendRequest req = new CreateMailSendRequest(1L, 10L, SendType.PLAN, LocalDate.of(2026, 7, 1));
 
             assertThatThrownBy(() -> mailSendService.updateMailSend(1L, req))
                     .isInstanceOf(InvalidStatusException.class)
@@ -287,11 +263,7 @@ class MailSendServiceTest {
             when(mailSendRepository.findById(1L)).thenReturn(Optional.of(pendingMs));
             when(mailSendRepository.save(pendingMs)).thenReturn(pendingMs);
 
-            CreateMailSendRequest req = new CreateMailSendRequest();
-            req.setUserId(1L);
-            req.setOfficeId(10L);
-            req.setSendType(SendType.MONITORING);
-            req.setSendMonth(newMonth);
+            CreateMailSendRequest req = new CreateMailSendRequest(1L, 10L, SendType.MONITORING, newMonth);
 
             mailSendService.updateMailSend(1L, req);
 
@@ -305,7 +277,7 @@ class MailSendServiceTest {
         void updateMailSend_nonExistingId_throwsResourceNotFoundException() {
             when(mailSendRepository.findById(999L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> mailSendService.updateMailSend(999L, new CreateMailSendRequest()))
+            assertThatThrownBy(() -> mailSendService.updateMailSend(999L, new CreateMailSendRequest(null, null, null, null)))
                     .isInstanceOf(ResourceNotFoundException.class)
                     .hasMessageContaining("送付レコードが見つかりません: 999");
         }

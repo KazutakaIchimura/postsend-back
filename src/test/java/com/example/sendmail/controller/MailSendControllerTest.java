@@ -68,29 +68,20 @@ class MailSendControllerTest {
         LocalDateTime now = LocalDateTime.of(2026, 6, 8, 10, 0, 0);
         LocalDate thisMonth = LocalDate.of(2026, 6, 1);
 
-        pendingMailSend = MailSendResponse.builder()
-                .id(1L).userId(1L).userName("山田太郎")
-                .officeId(10L).officeName("中央事業所")
-                .sendType(SendType.PLAN).sendMonth(thisMonth)
-                .status(SendStatus.PENDING).isOverdue(false)
-                .batchId(null).createdAt(now).updatedAt(now)
-                .build();
+        pendingMailSend = new MailSendResponse(
+                1L, 1L, "山田太郎", 10L, "中央事業所",
+                SendType.PLAN, thisMonth, SendStatus.PENDING, false,
+                null, now, now);
 
-        overdueMailSend = MailSendResponse.builder()
-                .id(2L).userId(1L).userName("山田太郎")
-                .officeId(10L).officeName("中央事業所")
-                .sendType(SendType.MONITORING).sendMonth(LocalDate.of(2026, 4, 1))
-                .status(SendStatus.PENDING).isOverdue(true)
-                .batchId(null).createdAt(now).updatedAt(now)
-                .build();
+        overdueMailSend = new MailSendResponse(
+                2L, 1L, "山田太郎", 10L, "中央事業所",
+                SendType.MONITORING, LocalDate.of(2026, 4, 1), SendStatus.PENDING, true,
+                null, now, now);
 
-        notOverdueMailSend = MailSendResponse.builder()
-                .id(3L).userId(2L).userName("鈴木花子")
-                .officeId(20L).officeName("南事業所")
-                .sendType(SendType.PLAN).sendMonth(LocalDate.of(2026, 3, 1))
-                .status(SendStatus.SENT).isOverdue(false)
-                .batchId(100L).createdAt(now).updatedAt(now)
-                .build();
+        notOverdueMailSend = new MailSendResponse(
+                3L, 2L, "鈴木花子", 20L, "南事業所",
+                SendType.PLAN, LocalDate.of(2026, 3, 1), SendStatus.SENT, false,
+                100L, now, now);
     }
 
     // ============================================================
@@ -145,17 +136,13 @@ class MailSendControllerTest {
         @WithMockUser(roles = "STAFF")
         @DisplayName("No.50: GET /api/mail-sends/by-office: 事業所ごとにグルーピングされたレスポンスが返る")
         void no50_listByOffice_returnsGroupedByOffice() throws Exception {
-            OfficeResponse office10 = OfficeResponse.builder().id(10L).name("中央事業所").isActive(true).build();
-            OfficeResponse office20 = OfficeResponse.builder().id(20L).name("南事業所").isActive(true).build();
+            OfficeResponse office10 = new OfficeResponse(10L, "中央事業所", null, null, null, null, null, true, null, null);
+            OfficeResponse office20 = new OfficeResponse(20L, "南事業所", null, null, null, null, null, true, null, null);
 
-            MailSendByOfficeResponse group1 = MailSendByOfficeResponse.builder()
-                    .office(office10)
-                    .mailSends(List.of(pendingMailSend, overdueMailSend))
-                    .build();
-            MailSendByOfficeResponse group2 = MailSendByOfficeResponse.builder()
-                    .office(office20)
-                    .mailSends(List.of(notOverdueMailSend))
-                    .build();
+            MailSendByOfficeResponse group1 = new MailSendByOfficeResponse(
+                    office10, List.of(pendingMailSend, overdueMailSend));
+            MailSendByOfficeResponse group2 = new MailSendByOfficeResponse(
+                    office20, List.of(notOverdueMailSend));
 
             when(mailSendService.listByOffice(isNull())).thenReturn(List.of(group1, group2));
 
@@ -172,11 +159,9 @@ class MailSendControllerTest {
         @WithMockUser(roles = "STAFF")
         @DisplayName("No.51: GET /api/mail-sends/by-office: send_month < 当月月初 かつ status=PENDING の場合 isOverdue=true になる")
         void no51_pendingAndBeforeThisMonth_isOverdueTrue() throws Exception {
-            OfficeResponse office10 = OfficeResponse.builder().id(10L).name("中央事業所").isActive(true).build();
-            MailSendByOfficeResponse group = MailSendByOfficeResponse.builder()
-                    .office(office10)
-                    .mailSends(List.of(overdueMailSend))
-                    .build();
+            OfficeResponse office10 = new OfficeResponse(10L, "中央事業所", null, null, null, null, null, true, null, null);
+            MailSendByOfficeResponse group = new MailSendByOfficeResponse(
+                    office10, List.of(overdueMailSend));
             when(mailSendService.listByOffice(isNull())).thenReturn(List.of(group));
 
             mockMvc.perform(get(BASE_URL + "/by-office"))
@@ -189,22 +174,18 @@ class MailSendControllerTest {
         @WithMockUser(roles = "STAFF")
         @DisplayName("No.52: GET /api/mail-sends/by-office: send_month が当月以降、または status≠PENDING の場合 isOverdue=false になる")
         void no52_notBeforeThisMonthOrNotPending_isOverdueFalse() throws Exception {
-            OfficeResponse office10 = OfficeResponse.builder().id(10L).name("中央事業所").isActive(true).build();
-            OfficeResponse office20 = OfficeResponse.builder().id(20L).name("南事業所").isActive(true).build();
+            OfficeResponse office10 = new OfficeResponse(10L, "中央事業所", null, null, null, null, null, true, null, null);
+            OfficeResponse office20 = new OfficeResponse(20L, "南事業所", null, null, null, null, null, true, null, null);
 
-            MailSendByOfficeResponse group1 = MailSendByOfficeResponse.builder()
-                    .office(office10).mailSends(List.of(pendingMailSend)).build();
-            MailSendByOfficeResponse group2 = MailSendByOfficeResponse.builder()
-                    .office(office20).mailSends(List.of(notOverdueMailSend)).build();
+            MailSendByOfficeResponse group1 = new MailSendByOfficeResponse(office10, List.of(pendingMailSend));
+            MailSendByOfficeResponse group2 = new MailSendByOfficeResponse(office20, List.of(notOverdueMailSend));
 
             when(mailSendService.listByOffice(isNull())).thenReturn(List.of(group1, group2));
 
             mockMvc.perform(get(BASE_URL + "/by-office"))
                     .andExpect(status().isOk())
-                    // pendingMailSend: PENDING かつ送付月が当月 → isOverdue=false
                     .andExpect(jsonPath("$[0].mailSends[0].status").value("PENDING"))
                     .andExpect(jsonPath("$[0].mailSends[0].isOverdue").value(false))
-                    // notOverdueMailSend: 送付月は過去だが status=SENT（PENDINGでない）→ isOverdue=false
                     .andExpect(jsonPath("$[1].mailSends[0].status").value("SENT"))
                     .andExpect(jsonPath("$[1].mailSends[0].isOverdue").value(false));
         }
@@ -270,9 +251,6 @@ class MailSendControllerTest {
         @WithMockUser(username = "staff@example.com", roles = "STAFF")
         @DisplayName("No.56: POST /api/mail-sends: send_month が月初日（YYYY-MM-01）に正規化されて保存される")
         void no56_sendMonthNormalizedToFirstDayOfMonth() throws Exception {
-            // クライアントが月の途中の日付を送信しても、サービス層で月初日に正規化される。
-            // ここではコントローラーがサービスから返された正規化済みの値（2026-06）を
-            // そのままレスポンスへ反映することを確認する。
             when(mailSendService.createMailSend(any(), eq("staff@example.com")))
                     .thenReturn(pendingMailSend);
 
@@ -297,12 +275,11 @@ class MailSendControllerTest {
         @WithMockUser(roles = "STAFF")
         @DisplayName("No.57: PUT /api/mail-sends/{id}: 更新内容が反映され200が返る")
         void no57_updateReflected_returns200() throws Exception {
-            MailSendResponse updated = MailSendResponse.builder()
-                    .id(1L).userId(1L).userName("山田太郎")
-                    .officeId(10L).officeName("中央事業所")
-                    .sendType(SendType.MONITORING).sendMonth(LocalDate.of(2026, 7, 1))
-                    .status(SendStatus.PENDING).isOverdue(false)
-                    .build();
+            LocalDateTime now = LocalDateTime.of(2026, 6, 8, 10, 0, 0);
+            MailSendResponse updated = new MailSendResponse(
+                    1L, 1L, "山田太郎", 10L, "中央事業所",
+                    SendType.MONITORING, LocalDate.of(2026, 7, 1), SendStatus.PENDING, false,
+                    null, now, now);
             when(mailSendService.updateMailSend(eq(1L), any())).thenReturn(updated);
 
             mockMvc.perform(put(BASE_URL + "/{id}", 1L)
@@ -355,10 +332,6 @@ class MailSendControllerTest {
         @WithMockUser(roles = "STAFF")
         @DisplayName("No.60: DELETE /api/mail-sends/{id}: STAFF権限で実行すると403が返る（仕様）/ 現行実装では実行できてしまう")
         void no60_staffRole_specExpects403_actualBehaviorAllows() throws Exception {
-            // 仕様書 No.60 は「STAFF権限で実行すると403が返る」ことを期待しているが、
-            // MailSendController / SecurityConfig には ADMIN 限定の制御が実装されておらず、
-            // /api/mail-sends/** は authenticated() であれば STAFF でも削除を実行できてしまう。
-            // ここでは現行実装の挙動（204で成功してしまう）をそのまま記録し、仕様との乖離を明示する。
             doNothing().when(mailSendService).deleteMailSend(1L);
 
             mockMvc.perform(delete(BASE_URL + "/{id}", 1L))
@@ -367,5 +340,4 @@ class MailSendControllerTest {
             verify(mailSendService).deleteMailSend(1L);
         }
     }
-
 }

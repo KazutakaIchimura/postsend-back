@@ -56,12 +56,12 @@ public class MailSendController {
     private String buildCsv(List<MailSendResponse> mailSends) {
         StringBuilder sb = new StringBuilder("利用者名,事業所名,送付種別,送付月,ステータス,送付日時\n");
         for (MailSendResponse ms : mailSends) {
-            sb.append(csvEscape(ms.getUserName())).append(',');
-            sb.append(csvEscape(ms.getOfficeName())).append(',');
-            sb.append(ms.getSendType() == com.example.sendmail.domain.enums.SendType.PLAN ? "計画作成" : "モニタリング").append(',');
-            sb.append(ms.getSendMonth() != null ? ms.getSendMonth().format(SEND_MONTH_FMT) : "").append(',');
-            sb.append(ms.getStatus() == com.example.sendmail.domain.enums.SendStatus.SENT ? "送付済" : "未送付").append(',');
-            sb.append(ms.getUpdatedAt() != null ? ms.getUpdatedAt().toString().replace("T", " ").substring(0, 16) : "");
+            sb.append(csvEscape(ms.userName())).append(',');
+            sb.append(csvEscape(ms.officeName())).append(',');
+            sb.append(ms.sendType() == com.example.sendmail.domain.enums.SendType.PLAN ? "計画作成" : "モニタリング").append(',');
+            sb.append(ms.sendMonth() != null ? ms.sendMonth().format(SEND_MONTH_FMT) : "").append(',');
+            sb.append(ms.status() == com.example.sendmail.domain.enums.SendStatus.SENT ? "送付済" : "未送付").append(',');
+            sb.append(ms.updatedAt() != null ? ms.updatedAt().toString().replace("T", " ").substring(0, 16) : "");
             sb.append('\n');
         }
         return sb.toString();

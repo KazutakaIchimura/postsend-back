@@ -26,7 +26,6 @@ public class MonitoringCycleService {
 
     @Transactional(readOnly = true)
     public List<MonitoringCycleResponse> listSchedule() {
-        // 全有効利用者を取得し、モニタリング設定があればそれを使い、なければ未設定のプレースホルダーを返す
         var cycleByUserId = monitoringCycleRepository.findAll().stream()
                 .collect(java.util.stream.Collectors.toMap(
                         mc -> mc.getUser().getId(),
@@ -50,10 +49,6 @@ public class MonitoringCycleService {
         return MonitoringCycleResponse.from(mc);
     }
 
-    /**
-     * 保存（新規作成 or 更新）する。
-     * ADMIN は全利用者に対して操作可能。STAFF は assigned_staff_id が自分の利用者のみ操作可能。
-     */
     @Transactional
     public MonitoringCycleResponse save(Long userId, SaveMonitoringCycleRequest req, String currentStaffEmail, boolean isAdmin) {
         User user = userRepository.findById(userId)
@@ -75,11 +70,11 @@ public class MonitoringCycleService {
                     return newMc;
                 });
 
-        mc.setCycleMonths(req.getCycleMonths());
-        mc.setNextMonitoringDate(req.getNextMonitoringDate());
-        mc.setNextPlanDraftDate(req.getNextPlanDraftDate());
-        mc.setNextPlanDate(req.getNextPlanDate());
-        mc.setNotes(req.getNotes());
+        mc.setCycleMonths(req.cycleMonths());
+        mc.setNextMonitoringDate(req.nextMonitoringDate());
+        mc.setNextPlanDraftDate(req.nextPlanDraftDate());
+        mc.setNextPlanDate(req.nextPlanDate());
+        mc.setNotes(req.notes());
 
         return MonitoringCycleResponse.from(monitoringCycleRepository.save(mc));
     }

@@ -66,7 +66,7 @@ class OfficeServiceTest {
         List<OfficeResponse> result = officeService.listOffices(false);
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getId()).isEqualTo(1L);
+        assertThat(result.get(0).id()).isEqualTo(1L);
         verify(officeRepository).findByIsActiveTrue();
         verify(officeRepository, never()).findAll();
     }
@@ -94,8 +94,8 @@ class OfficeServiceTest {
 
         OfficeResponse result = officeService.getOffice(1L);
 
-        assertThat(result.getId()).isEqualTo(1L);
-        assertThat(result.getName()).isEqualTo("中央事業所");
+        assertThat(result.id()).isEqualTo(1L);
+        assertThat(result.name()).isEqualTo("中央事業所");
     }
 
     @Test
@@ -115,12 +115,7 @@ class OfficeServiceTest {
     @Test
     @DisplayName("createOffice: リクエストのフィールドが正しくOfficeエンティティに設定されて保存される")
     void createOffice_setsFieldsAndSaves() {
-        CreateOfficeRequest req = new CreateOfficeRequest();
-        req.setName("新事業所");
-        req.setOfficeType("就労継続支援A型");
-        req.setPostalCode("123-4567");
-        req.setAddress("東京都新宿区1-1");
-        req.setPhone("03-0000-0001");
+        CreateOfficeRequest req = new CreateOfficeRequest("新事業所", "就労継続支援A型", "123-4567", null, "東京都新宿区1-1", "03-0000-0001");
 
         Office saved = new Office();
         saved.setId(3L);
@@ -133,7 +128,7 @@ class OfficeServiceTest {
 
         OfficeResponse result = officeService.createOffice(req);
 
-        assertThat(result.getId()).isEqualTo(3L);
+        assertThat(result.id()).isEqualTo(3L);
         assertThat(captor.getValue().getName()).isEqualTo("新事業所");
         assertThat(captor.getValue().getOfficeType()).isEqualTo("就労継続支援A型");
         assertThat(captor.getValue().getPostalCode()).isEqualTo("123-4567");
@@ -147,9 +142,7 @@ class OfficeServiceTest {
     @Test
     @DisplayName("updateOffice: リクエストのフィールドが既存エンティティに上書きされる")
     void updateOffice_updatesFields() {
-        UpdateOfficeRequest req = new UpdateOfficeRequest();
-        req.setName("中央事業所（改称）");
-        req.setOfficeType("就労継続支援B型");
+        UpdateOfficeRequest req = new UpdateOfficeRequest("中央事業所（改称）", "就労継続支援B型", null, null, null, null);
 
         when(officeRepository.findById(1L)).thenReturn(Optional.of(activeOffice));
         when(officeRepository.save(activeOffice)).thenReturn(activeOffice);
@@ -166,7 +159,7 @@ class OfficeServiceTest {
     void updateOffice_nonExistingId_throws() {
         when(officeRepository.findById(999L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> officeService.updateOffice(999L, new UpdateOfficeRequest()))
+        assertThatThrownBy(() -> officeService.updateOffice(999L, new UpdateOfficeRequest(null, null, null, null, null, null)))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 

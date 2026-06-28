@@ -60,44 +60,32 @@ class MailSendCrudIT extends AbstractIntegrationTest {
     @Test
     @DisplayName("作成→一覧→更新→削除の一連の流れが成功する")
     void createListUpdateDelete_succeeds() {
-        CreateMailSendRequest createReq = new CreateMailSendRequest();
-        createReq.setUserId(userId);
-        createReq.setOfficeId(officeId);
-        createReq.setSendType(SendType.PLAN);
-        createReq.setSendMonth(LocalDate.of(2026, 6, 15));
+        CreateMailSendRequest createReq = new CreateMailSendRequest(userId, officeId, SendType.PLAN, LocalDate.of(2026, 6, 15));
 
         MailSendResponse created = mailSendService.createMailSend(createReq, "admin@example.com");
 
         // 送付月は月初日に正規化されて MySQL の DATE 型に保存される
-        assertThat(created.getSendMonth()).isEqualTo(LocalDate.of(2026, 6, 1));
-        assertThat(created.getStatus().name()).isEqualTo("PENDING");
+        assertThat(created.sendMonth()).isEqualTo(LocalDate.of(2026, 6, 1));
+        assertThat(created.status().name()).isEqualTo("PENDING");
 
-        MailSend persisted = mailSendRepository.findById(created.getId()).orElseThrow();
+        MailSend persisted = mailSendRepository.findById(created.id()).orElseThrow();
         assertThat(persisted.getSendType()).isEqualTo(SendType.PLAN);
 
         var list = mailSendService.listMailSends(null, null, null, null, null, null);
-        assertThat(list).extracting(MailSendResponse::getId).contains(created.getId());
+        assertThat(list).extracting(MailSendResponse::id).contains(created.id());
 
-        CreateMailSendRequest updateReq = new CreateMailSendRequest();
-        updateReq.setUserId(userId);
-        updateReq.setOfficeId(officeId);
-        updateReq.setSendType(SendType.MONITORING);
-        updateReq.setSendMonth(LocalDate.of(2026, 7, 1));
-        MailSendResponse updated = mailSendService.updateMailSend(created.getId(), updateReq);
-        assertThat(updated.getSendType()).isEqualTo(SendType.MONITORING);
+        CreateMailSendRequest updateReq = new CreateMailSendRequest(userId, officeId, SendType.MONITORING, LocalDate.of(2026, 7, 1));
+        MailSendResponse updated = mailSendService.updateMailSend(created.id(), updateReq);
+        assertThat(updated.sendType()).isEqualTo(SendType.MONITORING);
 
-        mailSendService.deleteMailSend(created.getId());
-        assertThat(mailSendRepository.findById(created.getId())).isEmpty();
+        mailSendService.deleteMailSend(created.id());
+        assertThat(mailSendRepository.findById(created.id())).isEmpty();
     }
 
     @Test
     @DisplayName("同じ利用者×事業所×送付種別×送付月の組み合わせは重複エラーになる")
     void duplicateCombination_throwsDuplicateResourceException() {
-        CreateMailSendRequest req = new CreateMailSendRequest();
-        req.setUserId(userId);
-        req.setOfficeId(officeId);
-        req.setSendType(SendType.PLAN);
-        req.setSendMonth(LocalDate.of(2026, 6, 1));
+        CreateMailSendRequest req = new CreateMailSendRequest(userId, officeId, SendType.PLAN, LocalDate.of(2026, 6, 1));
 
         mailSendService.createMailSend(req, "admin@example.com");
 

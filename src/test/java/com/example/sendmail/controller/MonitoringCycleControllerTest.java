@@ -47,16 +47,14 @@ class MonitoringCycleControllerTest {
 
     @BeforeEach
     void setUp() {
-        sampleResponse = MonitoringCycleResponse.builder()
-                .userId(1L)
-                .userName("山田太郎")
-                .userNameKana("ヤマダタロウ")
-                .cycleMonths(6)
-                .nextMonitoringDate(LocalDate.of(2026, 9, 1))
-                .nextPlanDraftDate(LocalDate.of(2026, 8, 15))
-                .nextPlanDate(LocalDate.of(2026, 9, 15))
-                .notes("特記事項なし")
-                .build();
+        sampleResponse = new MonitoringCycleResponse(
+                1L, "山田太郎", "ヤマダタロウ",
+                null, null,
+                6,
+                LocalDate.of(2026, 9, 1),
+                LocalDate.of(2026, 8, 15),
+                LocalDate.of(2026, 9, 15),
+                "特記事項なし");
     }
 
     // ============================================================

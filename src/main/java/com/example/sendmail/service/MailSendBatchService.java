@@ -34,7 +34,7 @@ public class MailSendBatchService {
         Staff sentBy = staffRepository.findByEmailIgnoreCase(currentUserEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("スタッフが見つかりません: " + currentUserEmail));
 
-        Set<Long> requestedIds = new LinkedHashSet<>(req.getMailSendIds());
+        Set<Long> requestedIds = new LinkedHashSet<>(req.mailSendIds());
         List<MailSend> mailSends = mailSendRepository.findAllById(requestedIds);
         if (mailSends.size() != requestedIds.size()) {
             throw new ResourceNotFoundException("存在しない送付レコードが含まれています");
@@ -47,7 +47,7 @@ public class MailSendBatchService {
         MailSendBatch batch = new MailSendBatch();
         batch.setSentBy(sentBy);
         batch.setSentAt(LocalDateTime.now());
-        batch.setNotes(req.getNotes());
+        batch.setNotes(req.notes());
         MailSendBatch savedBatch = mailSendBatchRepository.save(batch);
 
         mailSends.forEach(ms -> {
@@ -57,12 +57,12 @@ public class MailSendBatchService {
         mailSendRepository.saveAll(mailSends);
 
         accessLogService.log("CREATE", "BATCH", savedBatch.getId());
-        return MailSendBatchResponse.builder()
-                .batchId(savedBatch.getId())
-                .sentAt(savedBatch.getSentAt())
-                .updatedCount(mailSends.size())
-                .notes(savedBatch.getNotes())
-                .build();
+        return new MailSendBatchResponse(
+                savedBatch.getId(),
+                savedBatch.getSentAt(),
+                mailSends.size(),
+                savedBatch.getNotes()
+        );
     }
 
     @Transactional(readOnly = true)
@@ -70,11 +70,11 @@ public class MailSendBatchService {
         MailSendBatch batch = mailSendBatchRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("バッチが見つかりません: " + id));
         long count = mailSendRepository.countByBatchId(id);
-        return MailSendBatchResponse.builder()
-                .batchId(batch.getId())
-                .sentAt(batch.getSentAt())
-                .updatedCount((int) count)
-                .notes(batch.getNotes())
-                .build();
+        return new MailSendBatchResponse(
+                batch.getId(),
+                batch.getSentAt(),
+                (int) count,
+                batch.getNotes()
+        );
     }
 }

@@ -57,17 +57,13 @@ class StaffControllerTest {
     void setUp() {
         LocalDateTime now = LocalDateTime.of(2026, 6, 8, 10, 0, 0);
 
-        activeStaff = StaffResponse.builder()
-                .id(1L).name("有効スタッフ").email("active@example.com")
-                .roleId(2L).role("STAFF").isActive(true).forcePasswordChange(true)
-                .createdAt(now).updatedAt(now)
-                .build();
+        activeStaff = new StaffResponse(
+                1L, "有効スタッフ", "active@example.com",
+                2L, "STAFF", true, true, null, now, now);
 
-        inactiveStaff = StaffResponse.builder()
-                .id(2L).name("無効スタッフ").email("inactive@example.com")
-                .roleId(2L).role("STAFF").isActive(false).forcePasswordChange(false)
-                .createdAt(now).updatedAt(now)
-                .build();
+        inactiveStaff = new StaffResponse(
+                2L, "無効スタッフ", "inactive@example.com",
+                2L, "STAFF", false, false, null, now, now);
     }
 
     // ============================================================
@@ -148,9 +144,6 @@ class StaffControllerTest {
         @WithMockUser(roles = "ADMIN")
         @DisplayName("No.75: POST /api/staffs: 必須項目を満たすと201で登録されパスワードがハッシュ化される")
         void no75_requiredFieldsProvided_returns201WithHashedPassword() throws Exception {
-            // パスワードのハッシュ化自体は StaffService（PasswordEncoder）の責務。
-            // コントローラーはサービスの戻り値（StaffResponse、平文パスワードを含まない）を
-            // そのまま返すため、レスポンスにハッシュ・平文いずれも含まれないことを確認する。
             when(staffService.createStaff(any())).thenReturn(activeStaff);
 
             mockMvc.perform(post(BASE_URL)
@@ -216,12 +209,9 @@ class StaffControllerTest {
         @WithMockUser(roles = "ADMIN")
         @DisplayName("No.79: POST /api/staffs: 登録時 force_password_change が true で初期化される")
         void no79_forcePasswordChangeInitializedToTrue() throws Exception {
-            // force_password_change の初期化自体は Staff エンティティ（デフォルト値 true）の責務。
-            // コントローラー経由でレスポンスに反映されることを確認する。
-            StaffResponse created = StaffResponse.builder()
-                    .id(3L).name("新規スタッフ").email("new@example.com")
-                    .roleId(2L).role("STAFF").isActive(true).forcePasswordChange(true)
-                    .build();
+            StaffResponse created = new StaffResponse(
+                    3L, "新規スタッフ", "new@example.com",
+                    2L, "STAFF", true, true, null, null, null);
             when(staffService.createStaff(any())).thenReturn(created);
 
             mockMvc.perform(post(BASE_URL)
@@ -245,12 +235,9 @@ class StaffControllerTest {
         @WithMockUser(roles = "ADMIN")
         @DisplayName("No.80: PUT /api/staffs/{id}: パスワード未指定の場合は既存のパスワードハッシュが維持される")
         void no80_passwordOmitted_keepsExistingPasswordHash() throws Exception {
-            // 既存ハッシュの維持自体は StaffService#updateStaff の責務（password が null の場合は更新しない）。
-            // ここではパスワードを指定せずに更新リクエストを送っても正常に処理されることを確認する。
-            StaffResponse updated = StaffResponse.builder()
-                    .id(1L).name("改名スタッフ").email("active@example.com")
-                    .roleId(2L).role("STAFF").isActive(true).forcePasswordChange(true)
-                    .build();
+            StaffResponse updated = new StaffResponse(
+                    1L, "改名スタッフ", "active@example.com",
+                    2L, "STAFF", true, true, null, null, null);
             when(staffService.updateStaff(eq(1L), any())).thenReturn(updated);
 
             mockMvc.perform(put(BASE_URL + "/{id}", 1L)
@@ -267,13 +254,9 @@ class StaffControllerTest {
         @WithMockUser(roles = "ADMIN")
         @DisplayName("No.81: PUT /api/staffs/{id}: パスワード指定時は新しいハッシュに更新される")
         void no81_passwordProvided_updatesToNewHash() throws Exception {
-            // 新しいハッシュへの更新自体は StaffService#updateStaff の責務
-            // （password 指定時に re-encode し forcePasswordChange を false にする）。
-            // ここではレスポンスの forcePasswordChange が false になることで反映を確認する。
-            StaffResponse updated = StaffResponse.builder()
-                    .id(1L).name("有効スタッフ").email("active@example.com")
-                    .roleId(2L).role("STAFF").isActive(true).forcePasswordChange(false)
-                    .build();
+            StaffResponse updated = new StaffResponse(
+                    1L, "有効スタッフ", "active@example.com",
+                    2L, "STAFF", true, false, null, null, null);
             when(staffService.updateStaff(eq(1L), any())).thenReturn(updated);
 
             mockMvc.perform(put(BASE_URL + "/{id}", 1L)
@@ -289,10 +272,6 @@ class StaffControllerTest {
         @WithMockUser(roles = "ADMIN")
         @DisplayName("No.82: PUT /api/staffs/{id}: メールアドレスを他スタッフと重複する値に変更すると409が返る")
         void no82_emailChangedToDuplicateValue_returns409() throws Exception {
-            // UpdateStaffRequest にはメールアドレスのフィールドが存在しないため、
-            // 本テストでは「サービス層がメール重複エラーをスローした場合に
-            // コントローラーが409へ正しくマッピングする」ことを確認することで、
-            // 仕様書 No.82 が現行実装でどう扱われるかを記録する。
             when(staffService.updateStaff(eq(1L), any()))
                     .thenThrow(new DuplicateResourceException("このメールアドレスは既に使用されています: other@example.com"));
 

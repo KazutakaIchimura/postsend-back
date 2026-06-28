@@ -109,10 +109,7 @@ class AuthServiceTest {
                 .thenReturn("{\"fontSize\":\"large\",\"furigana\":true,\"bgColor\":\"sepia\"}");
         when(staffRepository.save(activeStaff)).thenReturn(activeStaff);
 
-        SaveAccessibilitySettingsRequest req = new SaveAccessibilitySettingsRequest();
-        req.setFontSize("large");
-        req.setFurigana(true);
-        req.setBgColor("sepia");
+        SaveAccessibilitySettingsRequest req = new SaveAccessibilitySettingsRequest("large", true, "sepia");
 
         authService.saveAccessibilitySettings("user@example.com", req);
 
@@ -130,7 +127,7 @@ class AuthServiceTest {
                 .thenThrow(new RuntimeException("serialization error"));
         when(staffRepository.save(activeStaff)).thenReturn(activeStaff);
 
-        SaveAccessibilitySettingsRequest req = new SaveAccessibilitySettingsRequest();
+        SaveAccessibilitySettingsRequest req = new SaveAccessibilitySettingsRequest(null, null, null);
 
         authService.saveAccessibilitySettings("user@example.com", req);
 
@@ -145,7 +142,7 @@ class AuthServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> authService.saveAccessibilitySettings(
-                "unknown@example.com", new SaveAccessibilitySettingsRequest()))
+                "unknown@example.com", new SaveAccessibilitySettingsRequest(null, null, null)))
                 .isInstanceOf(ResourceNotFoundException.class);
 
         verify(staffRepository, never()).save(any());

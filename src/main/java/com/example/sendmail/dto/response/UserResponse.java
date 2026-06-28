@@ -2,68 +2,60 @@ package com.example.sendmail.dto.response;
 
 import com.example.sendmail.domain.entity.User;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import lombok.Builder;
-import lombok.Getter;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Getter
-@Builder
-public class UserResponse {
-    private Long id;
-    private String name;
-    private String nameKana;
-    private LocalDate birthDate;
-    private String notes;
-    private String recipientNumber;
-    private String disabilitySupportCategory;
-    private Boolean isActive;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private Long assignedStaffId;
-
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private String assignedStaffName;
-
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private List<OfficeResponse> offices;
-
+public record UserResponse(
+        Long id,
+        String name,
+        String nameKana,
+        LocalDate birthDate,
+        String notes,
+        String recipientNumber,
+        String disabilitySupportCategory,
+        @JsonProperty("isActive") Boolean isActive,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt,
+        @JsonInclude(JsonInclude.Include.NON_NULL) Long assignedStaffId,
+        @JsonInclude(JsonInclude.Include.NON_NULL) String assignedStaffName,
+        @JsonInclude(JsonInclude.Include.NON_NULL) List<OfficeResponse> offices
+) {
     public static UserResponse from(User user) {
-        return UserResponse.builder()
-                .id(user.getId())
-                .name(user.getName())
-                .nameKana(user.getNameKana())
-                .birthDate(user.getBirthDate())
-                .notes(user.getNotes())
-                .recipientNumber(user.getRecipientNumber())
-                .disabilitySupportCategory(user.getDisabilitySupportCategory())
-                .isActive(user.getIsActive())
-                .createdAt(user.getCreatedAt())
-                .updatedAt(user.getUpdatedAt())
-                .assignedStaffId(user.getAssignedStaff() != null ? user.getAssignedStaff().getId() : null)
-                .assignedStaffName(user.getAssignedStaff() != null ? user.getAssignedStaff().getName() : null)
-                .build();
+        return new UserResponse(
+                user.getId(),
+                user.getName(),
+                user.getNameKana(),
+                user.getBirthDate(),
+                user.getNotes(),
+                user.getRecipientNumber(),
+                user.getDisabilitySupportCategory(),
+                user.getIsActive(),
+                user.getCreatedAt(),
+                user.getUpdatedAt(),
+                user.getAssignedStaff() != null ? user.getAssignedStaff().getId() : null,
+                user.getAssignedStaff() != null ? user.getAssignedStaff().getName() : null,
+                null
+        );
     }
 
     public static UserResponse fromWithOffices(User user, List<OfficeResponse> offices) {
-        return UserResponse.builder()
-                .id(user.getId())
-                .name(user.getName())
-                .nameKana(user.getNameKana())
-                .birthDate(user.getBirthDate())
-                .notes(user.getNotes())
-                .recipientNumber(user.getRecipientNumber())
-                .disabilitySupportCategory(user.getDisabilitySupportCategory())
-                .isActive(user.getIsActive())
-                .createdAt(user.getCreatedAt())
-                .updatedAt(user.getUpdatedAt())
-                .assignedStaffId(user.getAssignedStaff() != null ? user.getAssignedStaff().getId() : null)
-                .assignedStaffName(user.getAssignedStaff() != null ? user.getAssignedStaff().getName() : null)
-                .offices(offices)
-                .build();
+        return new UserResponse(
+                user.getId(),
+                user.getName(),
+                user.getNameKana(),
+                user.getBirthDate(),
+                user.getNotes(),
+                user.getRecipientNumber(),
+                user.getDisabilitySupportCategory(),
+                user.getIsActive(),
+                user.getCreatedAt(),
+                user.getUpdatedAt(),
+                user.getAssignedStaff() != null ? user.getAssignedStaff().getId() : null,
+                user.getAssignedStaff() != null ? user.getAssignedStaff().getName() : null,
+                offices
+        );
     }
 }

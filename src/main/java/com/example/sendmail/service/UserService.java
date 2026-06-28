@@ -54,43 +54,43 @@ public class UserService {
     @Transactional
     public UserResponse createUser(CreateUserRequest req) {
         User user = new User();
-        user.setName(req.getName());
-        user.setNameKana(req.getNameKana());
-        user.setBirthDate(req.getBirthDate());
-        user.setNotes(req.getNotes());
-        user.setRecipientNumber(req.getRecipientNumber());
-        user.setDisabilitySupportCategory(req.getDisabilitySupportCategory());
+        user.setName(req.name());
+        user.setNameKana(req.nameKana());
+        user.setBirthDate(req.birthDate());
+        user.setNotes(req.notes());
+        user.setRecipientNumber(req.recipientNumber());
+        user.setDisabilitySupportCategory(req.disabilitySupportCategory());
         user.setIsActive(true);
-        if (req.getAssignedStaffId() != null) {
-            Staff staff = staffRepository.findById(req.getAssignedStaffId())
-                    .orElseThrow(() -> new ResourceNotFoundException("担当スタッフが見つかりません: " + req.getAssignedStaffId()));
+        if (req.assignedStaffId() != null) {
+            Staff staff = staffRepository.findById(req.assignedStaffId())
+                    .orElseThrow(() -> new ResourceNotFoundException("担当スタッフが見つかりません: " + req.assignedStaffId()));
             user.setAssignedStaff(staff);
         }
         UserResponse result = UserResponse.from(userRepository.save(user));
-        accessLogService.log("CREATE", "USER", result.getId());
+        accessLogService.log("CREATE", "USER", result.id());
         return result;
     }
 
     @Transactional
     public UserResponse updateUser(Long id, UpdateUserRequest req) {
-        if (req.getName() == null && req.getNameKana() == null
-                && req.getBirthDate() == null && req.getNotes() == null
-                && req.getRecipientNumber() == null && req.getDisabilitySupportCategory() == null
-                && req.getAssignedStaffId() == null) {
+        if (req.name() == null && req.nameKana() == null
+                && req.birthDate() == null && req.notes() == null
+                && req.recipientNumber() == null && req.disabilitySupportCategory() == null
+                && req.assignedStaffId() == null) {
             throw new IllegalStateException("更新するフィールドが指定されていません");
         }
         User user = findUserById(id);
-        if (req.getName() != null) {
-            if (req.getName().isBlank()) throw new IllegalArgumentException("名前は空白のみでは設定できません");
-            user.setName(req.getName());
+        if (req.name() != null) {
+            if (req.name().isBlank()) throw new IllegalArgumentException("名前は空白のみでは設定できません");
+            user.setName(req.name());
         }
-        if (req.getNameKana() != null) user.setNameKana(req.getNameKana().orElse(null));
-        if (req.getBirthDate() != null) user.setBirthDate(req.getBirthDate());
-        if (req.getNotes() != null) user.setNotes(req.getNotes().orElse(null));
-        if (req.getRecipientNumber() != null) user.setRecipientNumber(req.getRecipientNumber().orElse(null));
-        if (req.getDisabilitySupportCategory() != null) user.setDisabilitySupportCategory(req.getDisabilitySupportCategory().orElse(null));
-        if (req.getAssignedStaffId() != null) {
-            Long staffId = req.getAssignedStaffId().orElse(null);
+        if (req.nameKana() != null) user.setNameKana(req.nameKana().orElse(null));
+        if (req.birthDate() != null) user.setBirthDate(req.birthDate());
+        if (req.notes() != null) user.setNotes(req.notes().orElse(null));
+        if (req.recipientNumber() != null) user.setRecipientNumber(req.recipientNumber().orElse(null));
+        if (req.disabilitySupportCategory() != null) user.setDisabilitySupportCategory(req.disabilitySupportCategory().orElse(null));
+        if (req.assignedStaffId() != null) {
+            Long staffId = req.assignedStaffId().orElse(null);
             if (staffId == null) {
                 user.setAssignedStaff(null);
             } else {

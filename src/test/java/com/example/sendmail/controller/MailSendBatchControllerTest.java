@@ -54,13 +54,7 @@ class MailSendBatchControllerTest {
     @BeforeEach
     void setUp() {
         LocalDateTime sentAt = LocalDateTime.of(2026, 6, 8, 10, 30, 0);
-
-        batchResponse = MailSendBatchResponse.builder()
-                .batchId(100L)
-                .sentAt(sentAt)
-                .updatedCount(2)
-                .notes("6月分送付バッチ")
-                .build();
+        batchResponse = new MailSendBatchResponse(100L, sentAt, 2, "6月分送付バッチ");
     }
 
     // ============================================================
@@ -74,8 +68,6 @@ class MailSendBatchControllerTest {
         @WithMockUser(username = STAFF_EMAIL, roles = "STAFF")
         @DisplayName("No.61: POST /api/mail-send-batches: mailSendIds[] を指定すると対象レコードのstatusがSENTに更新される")
         void no61_specifyMailSendIds_updatesStatusToSent() throws Exception {
-            // status の更新自体はサービス層の責務。コントローラーはサービスの戻り値
-            // （更新後のバッチ情報）をそのまま返すため、レスポンスに反映されることを確認する。
             when(mailSendBatchService.createBatch(any(), eq(STAFF_EMAIL))).thenReturn(batchResponse);
 
             mockMvc.perform(post(BASE_URL)
@@ -92,8 +84,6 @@ class MailSendBatchControllerTest {
         @WithMockUser(username = STAFF_EMAIL, roles = "STAFF")
         @DisplayName("No.62: POST /api/mail-send-batches: 更新対象レコードに batch_id が設定される")
         void no62_updatedRecords_haveBatchIdSet() throws Exception {
-            // batch_id の設定自体はサービス層（MailSendBatchService#createBatch）の責務。
-            // ここではレスポンスの batchId がコントローラー経由で正しく返ることを確認する。
             when(mailSendBatchService.createBatch(any(), eq(STAFF_EMAIL))).thenReturn(batchResponse);
 
             mockMvc.perform(post(BASE_URL)
@@ -124,9 +114,6 @@ class MailSendBatchControllerTest {
         @WithMockUser(username = STAFF_EMAIL, roles = "STAFF")
         @DisplayName("No.64: POST /api/mail-send-batches: sent_by に処理を実行したログイン中スタッフのIDが設定される")
         void no64_sentByIsSetToCurrentLoggedInStaffId() throws Exception {
-            // sent_by の設定自体はサービス層の責務。コントローラーは Authentication#getName()
-            // （ログイン中スタッフのメールアドレス）をサービスへ引き渡す。
-            // ここではログイン中スタッフのメールアドレスがサービスに渡されることを検証する。
             when(mailSendBatchService.createBatch(any(), eq(STAFF_EMAIL))).thenReturn(batchResponse);
 
             mockMvc.perform(post(BASE_URL)

@@ -76,11 +76,7 @@ class StaffServiceTest {
     @Test
     @DisplayName("createStaff: 正常登録でStaffResponseを返す")
     void createStaff_success() {
-        CreateStaffRequest req = new CreateStaffRequest();
-        req.setName("田中太郎");
-        req.setEmail("Tanaka@Example.com");
-        req.setPassword("password123");
-        req.setRole("STAFF");
+        CreateStaffRequest req = new CreateStaffRequest("田中太郎", "Tanaka@Example.com", "password123", "STAFF");
 
         Staff saved = new Staff();
         saved.setId(10L);
@@ -99,9 +95,9 @@ class StaffServiceTest {
 
         StaffResponse result = staffService.createStaff(req);
 
-        assertThat(result.getId()).isEqualTo(10L);
+        assertThat(result.id()).isEqualTo(10L);
         // メールアドレスは小文字正規化されて保存される
-        assertThat(result.getEmail()).isEqualTo("tanaka@example.com");
+        assertThat(result.email()).isEqualTo("tanaka@example.com");
         verify(accessLogService).log(eq("CREATE"), eq("STAFF"), eq(10L));
     }
 
@@ -112,11 +108,7 @@ class StaffServiceTest {
     @Test
     @DisplayName("createStaff: DB一意制約違反でメール固有の DuplicateResourceException をスロー")
     void createStaff_duplicateEmail_throwsDuplicateResourceException() {
-        CreateStaffRequest req = new CreateStaffRequest();
-        req.setName("重複スタッフ");
-        req.setEmail("Duplicate@Example.com");
-        req.setPassword("password123");
-        req.setRole("STAFF");
+        CreateStaffRequest req = new CreateStaffRequest("重複スタッフ", "Duplicate@Example.com", "password123", "STAFF");
 
         when(roleRepository.findByName("STAFF")).thenReturn(Optional.of(staffRole));
         when(passwordEncoder.encode(anyString())).thenReturn("hashed");
@@ -144,10 +136,7 @@ class StaffServiceTest {
         staff.setCreatedAt(LocalDateTime.now());
         staff.setUpdatedAt(LocalDateTime.now());
 
-        UpdateStaffRequest req = new UpdateStaffRequest();
-        req.setName("田中太郎");
-        req.setRole("STAFF");
-        req.setPassword("   "); // 空白のみ
+        UpdateStaffRequest req = new UpdateStaffRequest("田中太郎", "STAFF", "   "); // 空白のみ
 
         when(staffRepository.findById(1L)).thenReturn(Optional.of(staff));
         when(roleRepository.findByName("STAFF")).thenReturn(Optional.of(staffRole));
@@ -170,10 +159,7 @@ class StaffServiceTest {
         staff.setCreatedAt(LocalDateTime.now());
         staff.setUpdatedAt(LocalDateTime.now());
 
-        UpdateStaffRequest req = new UpdateStaffRequest();
-        req.setName("田中次郎");
-        req.setRole("STAFF");
-        // password は設定しない
+        UpdateStaffRequest req = new UpdateStaffRequest("田中次郎", "STAFF", null);
 
         when(staffRepository.findById(1L)).thenReturn(Optional.of(staff));
         when(roleRepository.findByName("STAFF")).thenReturn(Optional.of(staffRole));
@@ -191,7 +177,7 @@ class StaffServiceTest {
     void updateStaff_nonExistingId_throwsResourceNotFoundException() {
         when(staffRepository.findById(999L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> staffService.updateStaff(999L, new UpdateStaffRequest()))
+        assertThatThrownBy(() -> staffService.updateStaff(999L, new UpdateStaffRequest(null, null, null)))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("スタッフが見つかりません: 999");
     }

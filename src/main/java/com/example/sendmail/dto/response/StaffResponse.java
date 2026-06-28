@@ -1,37 +1,34 @@
 package com.example.sendmail.dto.response;
 
 import com.example.sendmail.domain.entity.Staff;
-import lombok.Builder;
-import lombok.Getter;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.time.LocalDateTime;
 
-@Getter
-@Builder
-public class StaffResponse {
-    private Long id;
-    private String name;
-    private String email;
-    private Long roleId;
-    private String role;
-    private Boolean isActive;
-    private Boolean forcePasswordChange;
-    private String accessibilitySettings;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
-
+public record StaffResponse(
+        Long id,
+        String name,
+        String email,
+        Long roleId,
+        String role,
+        @JsonProperty("isActive") Boolean isActive,
+        Boolean forcePasswordChange,
+        String accessibilitySettings,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
+) {
     public static StaffResponse from(Staff staff) {
-        return StaffResponse.builder()
-                .id(staff.getId())
-                .name(staff.getName())
-                .email(staff.getEmail())
-                .roleId(staff.getRole().getId())
-                .role(staff.getRole().getName())
-                .isActive(staff.getIsActive())
-                .forcePasswordChange(staff.getForcePasswordChange())
-                .accessibilitySettings(staff.getAccessibilitySettings())
-                .createdAt(staff.getCreatedAt())
-                .updatedAt(staff.getUpdatedAt())
-                .build();
+        return new StaffResponse(
+                staff.getId(),
+                staff.getName(),
+                staff.getEmail(),
+                staff.getRole().getId(),
+                staff.getRole().getName(),
+                staff.getIsActive(),
+                staff.getForcePasswordChange(),
+                staff.getAccessibilitySettings(),
+                staff.getCreatedAt(),
+                staff.getUpdatedAt()
+        );
     }
 }

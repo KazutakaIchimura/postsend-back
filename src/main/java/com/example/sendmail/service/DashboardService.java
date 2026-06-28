@@ -33,31 +33,31 @@ public class DashboardService {
                 .sum();
 
         List<DashboardResponse.OverdueMonthCount> overdueMonths = overdueMonthsRaw.stream()
-                .map(row -> DashboardResponse.OverdueMonthCount.builder()
-                        .month(row.getSendMonth().format(MONTH_FORMATTER))
-                        .count(row.getCount())
-                        .build())
+                .map(row -> new DashboardResponse.OverdueMonthCount(
+                        row.getSendMonth().format(MONTH_FORMATTER),
+                        row.getCount()
+                ))
                 .toList();
 
         List<DashboardResponse.RecentHistoryItem> recentHistory = mailSendRepository
                 .findRecentSentHistory(SendStatus.SENT, PageRequest.of(0, 5))
                 .stream()
-                .map(row -> DashboardResponse.RecentHistoryItem.builder()
-                        .id(row.getId())
-                        .officeName(row.getOfficeName())
-                        .userName(row.getUserName())
-                        .sendType(row.getSendType())
-                        .sentAt(row.getSentAt())
-                        .build())
+                .map(row -> new DashboardResponse.RecentHistoryItem(
+                        row.getId(),
+                        row.getOfficeName(),
+                        row.getUserName(),
+                        row.getSendType(),
+                        row.getSentAt()
+                ))
                 .toList();
 
-        return DashboardResponse.builder()
-                .pendingCount(pendingCount)
-                .overdueCount(overdueCount)
-                .sentThisMonthCount(sentThisMonthCount)
-                .currentMonth(thisMonth.format(MONTH_FORMATTER))
-                .overdueMonths(overdueMonths)
-                .recentHistory(recentHistory)
-                .build();
+        return new DashboardResponse(
+                pendingCount,
+                overdueCount,
+                sentThisMonthCount,
+                thisMonth.format(MONTH_FORMATTER),
+                overdueMonths,
+                recentHistory
+        );
     }
 }

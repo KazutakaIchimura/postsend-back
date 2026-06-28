@@ -56,9 +56,7 @@ class UserServiceTest {
     @Test
     @DisplayName("updateUser: Optional.empty()をnameKanaに渡すとnullがセットされる（クリア）")
     void updateUser_nameKanaEmptyOptional_clearsNameKana() {
-        UpdateUserRequest req = new UpdateUserRequest();
-        req.setName("山田太郎");
-        req.setNameKana(Optional.empty()); // 明示的null送信
+        UpdateUserRequest req = new UpdateUserRequest("山田太郎", Optional.empty(), null, null, null, null, null);
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         when(userRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
@@ -66,15 +64,13 @@ class UserServiceTest {
         UserResponse result = userService.updateUser(1L, req);
 
         assertThat(captor.getValue().getNameKana()).isNull();
-        assertThat(result.getName()).isEqualTo("山田太郎");
+        assertThat(result.name()).isEqualTo("山田太郎");
     }
 
     @Test
     @DisplayName("updateUser: nameKanaをnull（未送信）にすると既存値が保持される")
     void updateUser_nameKanaNull_keepsExistingValue() {
-        UpdateUserRequest req = new UpdateUserRequest();
-        req.setName("山田次郎");
-        // req.setNameKana を呼ばない → null（未送信）
+        UpdateUserRequest req = new UpdateUserRequest("山田次郎", null, null, null, null, null, null);
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         when(userRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
@@ -87,9 +83,7 @@ class UserServiceTest {
     @Test
     @DisplayName("updateUser: nameKanaに値を渡すと更新される")
     void updateUser_nameKanaWithValue_updatesNameKana() {
-        UpdateUserRequest req = new UpdateUserRequest();
-        req.setName("山田太郎");
-        req.setNameKana(Optional.of("やまだじろう")); // 値更新
+        UpdateUserRequest req = new UpdateUserRequest("山田太郎", Optional.of("やまだじろう"), null, null, null, null, null);
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         when(userRepository.save(captor.capture())).thenAnswer(inv -> inv.getArgument(0));

@@ -40,12 +40,12 @@ public class StaffService {
 
     @Transactional
     public StaffResponse createStaff(CreateStaffRequest req) {
-        String email = req.getEmail().toLowerCase();
-        Role role = findRoleByName(req.getRole());
+        String email = req.email().toLowerCase();
+        Role role = findRoleByName(req.role());
         Staff staff = new Staff();
-        staff.setName(req.getName());
+        staff.setName(req.name());
         staff.setEmail(email);
-        staff.setPasswordHash(passwordEncoder.encode(req.getPassword()));
+        staff.setPasswordHash(passwordEncoder.encode(req.password()));
         staff.setRole(role);
         StaffResponse result;
         try {
@@ -53,21 +53,21 @@ public class StaffService {
         } catch (DataIntegrityViolationException e) {
             throw new DuplicateResourceException("このメールアドレスは既に使用されています: " + email);
         }
-        accessLogService.log("CREATE", "STAFF", result.getId());
+        accessLogService.log("CREATE", "STAFF", result.id());
         return result;
     }
 
     @Transactional
     public StaffResponse updateStaff(Long id, UpdateStaffRequest req) {
         Staff staff = findStaffById(id);
-        Role role = findRoleByName(req.getRole());
-        staff.setName(req.getName());
+        Role role = findRoleByName(req.role());
+        staff.setName(req.name());
         staff.setRole(role);
-        if (req.getPassword() != null) {
-            if (req.getPassword().isBlank()) {
+        if (req.password() != null) {
+            if (req.password().isBlank()) {
                 throw new IllegalArgumentException("パスワードに空白のみは指定できません");
             }
-            staff.setPasswordHash(passwordEncoder.encode(req.getPassword()));
+            staff.setPasswordHash(passwordEncoder.encode(req.password()));
             staff.setForcePasswordChange(false);
         }
         StaffResponse result = StaffResponse.from(staffRepository.save(staff));

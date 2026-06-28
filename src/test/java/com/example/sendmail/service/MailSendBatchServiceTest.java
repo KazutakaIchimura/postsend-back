@@ -105,9 +105,7 @@ class MailSendBatchServiceTest {
         @Test
         @DisplayName("正常なリクエストで対象レコードのstatusがSENTに更新され、バッチ情報が返る")
         void createBatch_success_updatesStatusAndReturnsBatchResponse() {
-            CreateMailSendBatchRequest req = new CreateMailSendBatchRequest();
-            req.setMailSendIds(List.of(1L, 2L));
-            req.setNotes("6月分送付");
+            CreateMailSendBatchRequest req = new CreateMailSendBatchRequest(List.of(1L, 2L), "6月分送付");
 
             when(staffRepository.findByEmailIgnoreCase("staff@example.com"))
                     .thenReturn(Optional.of(sentByStaff));
@@ -128,9 +126,9 @@ class MailSendBatchServiceTest {
 
             MailSendBatchResponse result = mailSendBatchService.createBatch(req, "staff@example.com");
 
-            assertThat(result.getBatchId()).isEqualTo(100L);
-            assertThat(result.getUpdatedCount()).isEqualTo(2);
-            assertThat(result.getNotes()).isEqualTo("6月分送付");
+            assertThat(result.batchId()).isEqualTo(100L);
+            assertThat(result.updatedCount()).isEqualTo(2);
+            assertThat(result.notes()).isEqualTo("6月分送付");
 
             // status が SENT に更新されている
             assertThat(pendingMs1.getStatus()).isEqualTo(SendStatus.SENT);
@@ -142,8 +140,7 @@ class MailSendBatchServiceTest {
         @Test
         @DisplayName("存在しないmailSendIdを含む場合ResourceNotFoundExceptionをスロー")
         void createBatch_nonExistingMailSendId_throwsResourceNotFoundException() {
-            CreateMailSendBatchRequest req = new CreateMailSendBatchRequest();
-            req.setMailSendIds(List.of(1L, 999L));
+            CreateMailSendBatchRequest req = new CreateMailSendBatchRequest(List.of(1L, 999L), null);
 
             when(staffRepository.findByEmailIgnoreCase("staff@example.com"))
                     .thenReturn(Optional.of(sentByStaff));
@@ -169,8 +166,7 @@ class MailSendBatchServiceTest {
                 f.set(sentMs, 3L);
             } catch (Exception ignored) {}
 
-            CreateMailSendBatchRequest req = new CreateMailSendBatchRequest();
-            req.setMailSendIds(List.of(1L, 3L));
+            CreateMailSendBatchRequest req = new CreateMailSendBatchRequest(List.of(1L, 3L), null);
 
             when(staffRepository.findByEmailIgnoreCase("staff@example.com"))
                     .thenReturn(Optional.of(sentByStaff));
@@ -187,8 +183,7 @@ class MailSendBatchServiceTest {
         @Test
         @DisplayName("存在しないスタッフのメールアドレスを指定するとResourceNotFoundExceptionをスロー")
         void createBatch_unknownStaffEmail_throwsResourceNotFoundException() {
-            CreateMailSendBatchRequest req = new CreateMailSendBatchRequest();
-            req.setMailSendIds(List.of(1L));
+            CreateMailSendBatchRequest req = new CreateMailSendBatchRequest(List.of(1L), null);
 
             when(staffRepository.findByEmailIgnoreCase("unknown@example.com"))
                     .thenReturn(Optional.empty());
@@ -224,9 +219,9 @@ class MailSendBatchServiceTest {
 
             MailSendBatchResponse result = mailSendBatchService.getBatch(100L);
 
-            assertThat(result.getBatchId()).isEqualTo(100L);
-            assertThat(result.getUpdatedCount()).isEqualTo(3);
-            assertThat(result.getNotes()).isEqualTo("6月分");
+            assertThat(result.batchId()).isEqualTo(100L);
+            assertThat(result.updatedCount()).isEqualTo(3);
+            assertThat(result.notes()).isEqualTo("6月分");
         }
 
         @Test

@@ -57,38 +57,35 @@ public class MailSendService {
                     List<MailSendResponse> mailSends = entry.getValue().stream()
                             .map(ms -> MailSendResponse.from(ms, thisMonth))
                             .toList();
-                    return MailSendByOfficeResponse.builder()
-                            .office(OfficeResponse.from(office))
-                            .mailSends(mailSends)
-                            .build();
+                    return new MailSendByOfficeResponse(OfficeResponse.from(office), mailSends);
                 })
                 .toList();
     }
 
     @Transactional
     public MailSendResponse createMailSend(CreateMailSendRequest req, String currentUserEmail) {
-        LocalDate sendMonth = req.getSendMonth().withDayOfMonth(1);
+        LocalDate sendMonth = req.sendMonth().withDayOfMonth(1);
         if (mailSendRepository.existsByUserIdAndOfficeIdAndSendTypeAndSendMonth(
-                req.getUserId(), req.getOfficeId(), req.getSendType(), sendMonth)) {
+                req.userId(), req.officeId(), req.sendType(), sendMonth)) {
             throw new DuplicateResourceException("同じ送付レコードが既に存在します");
         }
-        User user = userRepository.findById(req.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("利用者が見つかりません: " + req.getUserId()));
-        Office office = officeRepository.findById(req.getOfficeId())
-                .orElseThrow(() -> new ResourceNotFoundException("事業所が見つかりません: " + req.getOfficeId()));
+        User user = userRepository.findById(req.userId())
+                .orElseThrow(() -> new ResourceNotFoundException("利用者が見つかりません: " + req.userId()));
+        Office office = officeRepository.findById(req.officeId())
+                .orElseThrow(() -> new ResourceNotFoundException("事業所が見つかりません: " + req.officeId()));
         Staff createdBy = staffRepository.findByEmailIgnoreCase(currentUserEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("スタッフが見つかりません: " + currentUserEmail));
 
         MailSend ms = new MailSend();
         ms.setUser(user);
         ms.setOffice(office);
-        ms.setSendType(req.getSendType());
+        ms.setSendType(req.sendType());
         ms.setSendMonth(sendMonth);
         ms.setCreatedBy(createdBy);
 
         LocalDate thisMonth = LocalDate.now().withDayOfMonth(1);
         MailSendResponse result = MailSendResponse.from(mailSendRepository.save(ms), thisMonth);
-        accessLogService.log("CREATE", "MAIL_SEND", result.getId());
+        accessLogService.log("CREATE", "MAIL_SEND", result.id());
         return result;
     }
 
@@ -98,9 +95,9 @@ public class MailSendService {
         if (ms.getStatus() != SendStatus.PENDING) {
             throw new InvalidStatusException("PENDING以外のレコードは更新できません");
         }
-        LocalDate sendMonth = req.getSendMonth().withDayOfMonth(1);
+        LocalDate sendMonth = req.sendMonth().withDayOfMonth(1);
         ms.setSendMonth(sendMonth);
-        ms.setSendType(req.getSendType());
+        ms.setSendType(req.sendType());
         LocalDate thisMonth = LocalDate.now().withDayOfMonth(1);
         MailSendResponse result = MailSendResponse.from(mailSendRepository.save(ms), thisMonth);
         accessLogService.log("UPDATE", "MAIL_SEND", id);
@@ -148,5 +145,4 @@ public class MailSendService {
                 .map(ms -> MailSendResponse.from(ms, thisMonth))
                 .toList();
     }
-
 }

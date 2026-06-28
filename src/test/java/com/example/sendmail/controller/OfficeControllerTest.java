@@ -59,17 +59,13 @@ class OfficeControllerTest {
     void setUp() {
         LocalDateTime now = LocalDateTime.of(2026, 6, 8, 10, 0, 0);
 
-        activeOffice = OfficeResponse.builder()
-                .id(1L).name("中央事業所").postalCode("100-0001")
-                .building("中央ビル3F").address("東京都千代田区1-1-1").phone("03-1234-5678")
-                .isActive(true).createdAt(now).updatedAt(now)
-                .build();
+        activeOffice = new OfficeResponse(
+                1L, "中央事業所", null, "100-0001", "中央ビル3F",
+                "東京都千代田区1-1-1", "03-1234-5678", true, now, now);
 
-        inactiveOffice = OfficeResponse.builder()
-                .id(2L).name("廃止事業所").postalCode("200-0002")
-                .building(null).address("神奈川県横浜市2-2-2").phone("045-9876-5432")
-                .isActive(false).createdAt(now).updatedAt(now)
-                .build();
+        inactiveOffice = new OfficeResponse(
+                2L, "廃止事業所", null, "200-0002", null,
+                "神奈川県横浜市2-2-2", "045-9876-5432", false, now, now);
     }
 
     // ============================================================
@@ -186,10 +182,6 @@ class OfficeControllerTest {
         @WithMockUser(roles = "ADMIN")
         @DisplayName("No.42: POST /api/offices: 郵便番号の形式が不正な場合400バリデーションエラーが返る")
         void no42_invalidPostalCodeFormat_returns400() throws Exception {
-            // CreateOfficeRequest#postalCode は @Size(max = 8) のみで、形式（パターン）チェックは
-            // 行われていない。9文字以上を指定した場合のみ @Size 制約に抵触し400となる。
-            // 仕様書 No.42（「形式が不正」）に対しては、現行実装で検証可能な「桁数超過」を
-            // 不正な形式の代表例として用いることで、バリデーションエラーが発生することを記録する。
             mockMvc.perform(post(BASE_URL)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
@@ -205,10 +197,7 @@ class OfficeControllerTest {
         @WithMockUser(roles = "ADMIN")
         @DisplayName("No.43: POST /api/offices: 任意項目（建物名・電話番号など）が未指定でも登録できる")
         void no43_optionalFieldsOmitted_canRegister() throws Exception {
-            OfficeResponse minimal = OfficeResponse.builder()
-                    .id(3L).name("最小事業所").postalCode(null).building(null)
-                    .address(null).phone(null).isActive(true)
-                    .build();
+            OfficeResponse minimal = new OfficeResponse(3L, "最小事業所", null, null, null, null, null, true, null, null);
             when(officeService.createOffice(any())).thenReturn(minimal);
 
             mockMvc.perform(post(BASE_URL)
@@ -233,11 +222,9 @@ class OfficeControllerTest {
         @WithMockUser(roles = "ADMIN")
         @DisplayName("No.44: PUT /api/offices/{id}: 更新内容が反映され200が返る")
         void no44_updateReflected_returns200() throws Exception {
-            OfficeResponse updated = OfficeResponse.builder()
-                    .id(1L).name("中央事業所（改称）").postalCode("100-0001")
-                    .building("中央ビル5F").address("東京都千代田区1-1-1").phone("03-1234-5678")
-                    .isActive(true)
-                    .build();
+            OfficeResponse updated = new OfficeResponse(
+                    1L, "中央事業所（改称）", null, "100-0001", "中央ビル5F",
+                    "東京都千代田区1-1-1", "03-1234-5678", true, null, null);
             when(officeService.updateOffice(eq(1L), any())).thenReturn(updated);
 
             mockMvc.perform(put(BASE_URL + "/{id}", 1L)
@@ -278,8 +265,7 @@ class OfficeControllerTest {
         @WithMockUser(roles = "ADMIN")
         @DisplayName("No.AC-O-01: ADMIN権限で実行すると有効化され200が返る")
         void no_ac_o01_adminRole_activatesAndReturns200() throws Exception {
-            OfficeResponse activated = OfficeResponse.builder()
-                    .id(2L).name("廃止事業所").isActive(true).build();
+            OfficeResponse activated = new OfficeResponse(2L, "廃止事業所", null, null, null, null, null, true, null, null);
             when(officeService.activateOffice(2L)).thenReturn(activated);
 
             mockMvc.perform(patch(BASE_URL + "/{id}/activate", 2L))
@@ -294,8 +280,7 @@ class OfficeControllerTest {
         @WithMockUser(roles = "STAFF")
         @DisplayName("No.AC-O-02: STAFF権限でも有効化できる（OfficeControllerにはロール制限なし）")
         void no_ac_o02_staffRole_activatesSuccessfully() throws Exception {
-            OfficeResponse activated = OfficeResponse.builder()
-                    .id(2L).name("廃止事業所").isActive(true).build();
+            OfficeResponse activated = new OfficeResponse(2L, "廃止事業所", null, null, null, null, null, true, null, null);
             when(officeService.activateOffice(2L)).thenReturn(activated);
 
             mockMvc.perform(patch(BASE_URL + "/{id}/activate", 2L))
@@ -345,11 +330,6 @@ class OfficeControllerTest {
         @WithMockUser(roles = "STAFF")
         @DisplayName("No.47: DELETE /api/offices/{id}: STAFF権限で実行すると403が返る（仕様）/ 現行実装では実行できてしまう")
         void no47_staffRole_specExpects403_actualBehaviorAllows() throws Exception {
-            // 仕様書 No.47 は「STAFF権限で実行すると403が返る」ことを期待しているが、
-            // OfficeController / SecurityConfig には ADMIN 限定の制御が実装されておらず、
-            // /api/offices/** は authenticated() であれば STAFF でも実行できてしまう。
-            // ここでは現行実装の挙動（204で成功してしまう）をそのまま記録し、
-            // 仕様との乖離を明示する。
             doNothing().when(officeService).deactivateOffice(1L);
 
             mockMvc.perform(delete(BASE_URL + "/{id}", 1L))

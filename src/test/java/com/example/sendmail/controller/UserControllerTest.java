@@ -55,20 +55,18 @@ class UserControllerTest {
     void setUp() {
         LocalDateTime now = LocalDateTime.of(2026, 6, 4, 10, 0, 0);
 
-        activeUser = UserResponse.builder()
-                .id(1L).name("山田太郎").nameKana("ヤマダタロウ")
-                .birthDate(LocalDate.of(1980, 4, 1)).notes("備考")
-                .isActive(true).createdAt(now).updatedAt(now)
-                .build();
+        activeUser = new UserResponse(
+                1L, "山田太郎", "ヤマダタロウ",
+                LocalDate.of(1980, 4, 1), "備考",
+                null, null, true, now, now, null, null, null);
 
-        inactiveUser = UserResponse.builder()
-                .id(2L).name("鈴木花子").nameKana("スズキハナコ")
-                .birthDate(LocalDate.of(1990, 8, 15)).notes(null)
-                .isActive(false).createdAt(now).updatedAt(now)
-                .build();
+        inactiveUser = new UserResponse(
+                2L, "鈴木花子", "スズキハナコ",
+                LocalDate.of(1990, 8, 15), null,
+                null, null, false, now, now, null, null, null);
 
-        office1 = OfficeResponse.builder().id(10L).name("東京事務所").isActive(true).build();
-        office2 = OfficeResponse.builder().id(20L).name("大阪事務所").isActive(true).build();
+        office1 = new OfficeResponse(10L, "東京事務所", null, null, null, null, null, true, null, null);
+        office2 = new OfficeResponse(20L, "大阪事務所", null, null, null, null, null, true, null, null);
     }
 
     // ============================================================
@@ -126,9 +124,6 @@ class UserControllerTest {
         @WithMockUser(roles = "STAFF")
         @DisplayName("No.16: GET /api/users: 検索ワード（name/nameKana）で絞り込みができる")
         void no16_searchByNameOrNameKana_filtersResults() throws Exception {
-            // 本コントローラーは現状 includeInactive のみを受け付け、検索ワードのクエリパラメータは
-            // 存在しない。検索しても全件が返る（絞り込みは行われない）ことを確認することで、
-            // 仕様書 No.16 が現行実装でどう扱われるかを明示的に記録する。
             when(userService.listUsers(false)).thenReturn(List.of(activeUser, inactiveUser));
 
             mockMvc.perform(get(BASE_URL).param("search", "山田"))
@@ -159,12 +154,10 @@ class UserControllerTest {
         @WithMockUser(roles = "STAFF")
         @DisplayName("No.17: GET /api/users/{id}: 存在するIDを指定すると詳細が200で返る")
         void no17_existingId_returns200WithDetail() throws Exception {
-            UserResponse withOffices = UserResponse.builder()
-                    .id(1L).name("山田太郎").nameKana("ヤマダタロウ")
-                    .birthDate(LocalDate.of(1980, 4, 1)).notes("備考")
-                    .isActive(true)
-                    .offices(List.of(office1, office2))
-                    .build();
+            UserResponse withOffices = new UserResponse(
+                    1L, "山田太郎", "ヤマダタロウ",
+                    LocalDate.of(1980, 4, 1), "備考",
+                    null, null, true, null, null, null, null, List.of(office1, office2));
             when(userService.getUser(1L)).thenReturn(withOffices);
 
             mockMvc.perform(get(BASE_URL + "/{id}", 1L))
@@ -244,9 +237,8 @@ class UserControllerTest {
         @WithMockUser(roles = "ADMIN")
         @DisplayName("No.22: POST /api/users: 任意項目（ふりがな・生年月日・備考）が未指定でも登録できる")
         void no22_optionalFieldsOmitted_canRegister() throws Exception {
-            UserResponse minimal = UserResponse.builder()
-                    .id(3L).name("最小利用者").nameKana(null).birthDate(null).notes(null)
-                    .isActive(true).build();
+            UserResponse minimal = new UserResponse(
+                    3L, "最小利用者", null, null, null, null, null, true, null, null, null, null, null);
             when(userService.createUser(any())).thenReturn(minimal);
 
             mockMvc.perform(post(BASE_URL)
@@ -271,10 +263,10 @@ class UserControllerTest {
         @WithMockUser(roles = "ADMIN")
         @DisplayName("No.23: PUT /api/users/{id}: 更新内容が反映され200が返る")
         void no23_updateReflected_returns200() throws Exception {
-            UserResponse updated = UserResponse.builder()
-                    .id(1L).name("山田次郎").nameKana("ヤマダジロウ")
-                    .birthDate(LocalDate.of(1980, 4, 1)).notes("更新後備考")
-                    .isActive(true).build();
+            UserResponse updated = new UserResponse(
+                    1L, "山田次郎", "ヤマダジロウ",
+                    LocalDate.of(1980, 4, 1), "更新後備考",
+                    null, null, true, null, null, null, null, null);
             when(userService.updateUser(eq(1L), any())).thenReturn(updated);
 
             mockMvc.perform(patch(BASE_URL + "/{id}", 1L)
@@ -330,8 +322,8 @@ class UserControllerTest {
         @WithMockUser(roles = "ADMIN")
         @DisplayName("No.26: DELETE /api/users/{id}: ADMIN権限で実行すると論理削除（is_active=false）される")
         void no26_adminRole_logicallyDeactivates() throws Exception {
-            UserResponse deactivated = UserResponse.builder()
-                    .id(1L).name("山田太郎").isActive(false).build();
+            UserResponse deactivated = new UserResponse(
+                    1L, "山田太郎", null, null, null, null, null, false, null, null, null, null, null);
             when(userService.deactivateUser(1L)).thenReturn(deactivated);
 
             mockMvc.perform(delete(BASE_URL + "/{id}", 1L))
@@ -356,22 +348,19 @@ class UserControllerTest {
         @WithMockUser(roles = "ADMIN")
         @DisplayName("No.28: DELETE /api/users/{id}: 無効化後も利用者レコード自体は物理削除されない")
         void no28_afterDeactivation_recordIsNotPhysicallyDeleted() throws Exception {
-            UserResponse deactivated = UserResponse.builder()
-                    .id(1L).name("山田太郎").isActive(false).build();
+            UserResponse deactivated = new UserResponse(
+                    1L, "山田太郎", null, null, null, null, null, false, null, null, null, null, null);
             when(userService.deactivateUser(1L)).thenReturn(deactivated);
             when(userService.getUser(1L)).thenReturn(deactivated);
 
             mockMvc.perform(delete(BASE_URL + "/{id}", 1L))
                     .andExpect(status().isOk());
 
-            // 無効化後も GET で取得できる（レコードが残存している）ことを確認する
             mockMvc.perform(get(BASE_URL + "/{id}", 1L))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(1))
                     .andExpect(jsonPath("$.isActive").value(false));
 
-            // Controller / Service のシグネチャは論理削除（is_active 更新）であり、
-            // JpaRepository#delete 等の物理削除 API を呼ぶエンドポイントは存在しない
             verify(userService, never()).getUser(eq(999999L));
         }
     }
@@ -419,10 +408,8 @@ class UserControllerTest {
         @WithMockUser(roles = "ADMIN")
         @DisplayName("No.31: POST /api/users/{userId}/offices: 事業所を紐付けると201で登録される")
         void no31_linkOffice_returns201() throws Exception {
-            UserResponse withOffice = UserResponse.builder()
-                    .id(1L).name("山田太郎").isActive(true)
-                    .offices(List.of(office1))
-                    .build();
+            UserResponse withOffice = new UserResponse(
+                    1L, "山田太郎", null, null, null, null, null, true, null, null, null, null, List.of(office1));
             when(userService.addOfficeToUser(1L, 10L)).thenReturn(withOffice);
 
             mockMvc.perform(post(BASE_URL + "/{userId}/offices", 1L)
@@ -479,8 +466,8 @@ class UserControllerTest {
         @WithMockUser(roles = "ADMIN")
         @DisplayName("No.AC-U-01: ADMIN権限で実行すると有効化され200が返る")
         void no_ac_u01_adminRole_activatesAndReturns200() throws Exception {
-            UserResponse activated = UserResponse.builder()
-                    .id(2L).name("鈴木花子").isActive(true).build();
+            UserResponse activated = new UserResponse(
+                    2L, "鈴木花子", null, null, null, null, null, true, null, null, null, null, null);
             when(userService.activateUser(2L)).thenReturn(activated);
 
             mockMvc.perform(patch(BASE_URL + "/{id}/activate", 2L))
