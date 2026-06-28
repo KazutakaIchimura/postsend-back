@@ -292,4 +292,112 @@ class AuthControllerTest {
                     .andExpect(jsonPath("$.message").value("権限がありません"));
         }
     }
+
+    @Nested
+    @DisplayName("パスワード変更（POST /api/auth/password/change）")
+    class PasswordChangeTests {
+
+        @Test
+        @DisplayName("No.PC-01: ログイン中に有効なパスワードで変更リクエストを送ると200が返る")
+        void no_pc01_validPasswordChange_returns200() throws Exception {
+            MockHttpSession session = login(ACTIVE_EMAIL, RAW_PASSWORD);
+            Assertions.assertNotNull(session);
+
+            mockMvc.perform(post("/api/auth/password/change")
+                            .session(session)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"newPassword": "newSecurePass123"}
+                                    """))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("No.PC-02: newPasswordが8文字未満の場合400バリデーションエラーが返る（@Size(min=8)）")
+        void no_pc02_shortPassword_returns400() throws Exception {
+            MockHttpSession session = login(ACTIVE_EMAIL, RAW_PASSWORD);
+            Assertions.assertNotNull(session);
+
+            mockMvc.perform(post("/api/auth/password/change")
+                            .session(session)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"newPassword": "short1"}
+                                    """))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.message").value("入力値が不正です"));
+        }
+
+        @Test
+        @DisplayName("No.PC-03: newPasswordが空の場合400バリデーションエラーが返る（@NotBlank）")
+        void no_pc03_blankPassword_returns400() throws Exception {
+            MockHttpSession session = login(ACTIVE_EMAIL, RAW_PASSWORD);
+            Assertions.assertNotNull(session);
+
+            mockMvc.perform(post("/api/auth/password/change")
+                            .session(session)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"newPassword": ""}
+                                    """))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("No.PC-04: 未認証でパスワード変更リクエストを送ると401が返る")
+        void no_pc04_unauthenticated_returns401() throws Exception {
+            mockMvc.perform(post("/api/auth/password/change")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"newPassword": "newSecurePass123"}
+                                    """))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.message").value("認証が必要です"));
+        }
+    }
+
+    @Nested
+    @DisplayName("アクセシビリティ設定保存（PUT /api/auth/accessibility-settings）")
+    class AccessibilitySettingsTests {
+
+        @Test
+        @DisplayName("No.AS-01: ログイン中にアクセシビリティ設定を送信すると204が返る")
+        void no_as01_validRequest_returns204() throws Exception {
+            MockHttpSession session = login(ACTIVE_EMAIL, RAW_PASSWORD);
+            Assertions.assertNotNull(session);
+
+            mockMvc.perform(put("/api/auth/accessibility-settings")
+                            .session(session)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"fontSize": "large", "furigana": true, "bgColor": "sepia"}
+                                    """))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("No.AS-02: 空のボディでも204が返る（全フィールド任意）")
+        void no_as02_emptyBody_returns204() throws Exception {
+            MockHttpSession session = login(ACTIVE_EMAIL, RAW_PASSWORD);
+            Assertions.assertNotNull(session);
+
+            mockMvc.perform(put("/api/auth/accessibility-settings")
+                            .session(session)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isNoContent());
+        }
+
+        @Test
+        @DisplayName("No.AS-03: 未認証でアクセスすると401が返る")
+        void no_as03_unauthenticated_returns401() throws Exception {
+            mockMvc.perform(put("/api/auth/accessibility-settings")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"fontSize": "large"}
+                                    """))
+                    .andExpect(status().isUnauthorized())
+                    .andExpect(jsonPath("$.message").value("認証が必要です"));
+        }
+    }
 }

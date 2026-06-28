@@ -307,6 +307,44 @@ class StaffControllerTest {
     }
 
     // ============================================================
+    // PATCH /api/staffs/{id}/activate
+    // ============================================================
+    @Nested
+    @DisplayName("PATCH /api/staffs/{id}/activate — スタッフ有効化")
+    class ActivateStaff {
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        @DisplayName("No.AC-S-01: ADMIN権限で実行すると有効化が成功し204が返る")
+        void no_ac_s01_adminRole_activatesAndReturns204() throws Exception {
+            doNothing().when(staffService).activateStaff(2L);
+
+            mockMvc.perform(patch(BASE_URL + "/{id}/activate", 2L))
+                    .andExpect(status().isNoContent());
+
+            verify(staffService).activateStaff(2L);
+        }
+
+        @Test
+        @WithMockUser(roles = "STAFF")
+        @DisplayName("No.AC-S-02: STAFF権限でアクセスすると403が返る（/api/staffs/** はADMIN限定）")
+        void no_ac_s02_staffRole_returns403() throws Exception {
+            mockMvc.perform(patch(BASE_URL + "/{id}/activate", 2L))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.message").value("権限がありません"));
+
+            verify(staffService, never()).activateStaff(anyLong());
+        }
+
+        @Test
+        @DisplayName("No.AC-S-03: 未認証でアクセスすると401が返る")
+        void no_ac_s03_unauthenticated_returns401() throws Exception {
+            mockMvc.perform(patch(BASE_URL + "/{id}/activate", 2L))
+                    .andExpect(status().isUnauthorized());
+        }
+    }
+
+    // ============================================================
     // DELETE /api/staffs/{id}
     // ============================================================
     @Nested

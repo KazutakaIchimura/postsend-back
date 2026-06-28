@@ -32,6 +32,7 @@ public class DatabaseMigrator implements CommandLineRunner {
         initSchema();
         insertRolesIfNotExists();
         migrateStaffsRoleColumnIfNeeded();
+        addAccessibilitySettingsColumnIfNotExists();
         insertAdminIfNotExists();
         addBuildingColumnIfNotExists();
         addOfficeTypeColumnIfNotExists();
@@ -40,7 +41,6 @@ public class DatabaseMigrator implements CommandLineRunner {
         addRecipientNumberColumnIfNotExists();
         addDisabilityCategoryColumnIfNotExists();
         createMonitoringCyclesTableIfNotExists();
-        addAccessibilitySettingsColumnIfNotExists();
     }
 
     private void waitForDatabase() throws InterruptedException {

@@ -4,7 +4,7 @@ import com.example.sendmail.domain.entity.Staff;
 import com.example.sendmail.dto.request.SaveAccessibilitySettingsRequest;
 import com.example.sendmail.exception.ResourceNotFoundException;
 import com.example.sendmail.repository.StaffRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

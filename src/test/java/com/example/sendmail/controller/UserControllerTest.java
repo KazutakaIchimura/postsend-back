@@ -135,6 +135,17 @@ class UserControllerTest {
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.length()").value(2));
         }
+
+        @Test
+        @WithMockUser(roles = "STAFF")
+        @DisplayName("No.16b: GET /api/users: STAFF権限でincludeInactive=trueを指定すると403が返る")
+        void no16b_staffRole_includeInactiveTrue_returns403() throws Exception {
+            mockMvc.perform(get(BASE_URL).param("includeInactive", "true"))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.message").value("権限がありません"));
+
+            verify(userService, never()).listUsers(true);
+        }
     }
 
     // ============================================================
@@ -454,6 +465,52 @@ class UserControllerTest {
                                     """))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.message").value("事業所が見つかりません: 999"));
+        }
+    }
+
+    // ============================================================
+    // PATCH /api/users/{id}/activate
+    // ============================================================
+    @Nested
+    @DisplayName("PATCH /api/users/{id}/activate — 利用者有効化")
+    class ActivateUser {
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        @DisplayName("No.AC-U-01: ADMIN権限で実行すると有効化され200が返る")
+        void no_ac_u01_adminRole_activatesAndReturns200() throws Exception {
+            UserResponse activated = UserResponse.builder()
+                    .id(2L).name("鈴木花子").isActive(true).build();
+            when(userService.activateUser(2L)).thenReturn(activated);
+
+            mockMvc.perform(patch(BASE_URL + "/{id}/activate", 2L))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.isActive").value(true));
+
+            verify(userService).activateUser(2L);
+        }
+
+        @Test
+        @WithMockUser(roles = "STAFF")
+        @DisplayName("No.AC-U-02: STAFF権限で実行すると403が返る（@PreAuthorize hasRole('ADMIN')）")
+        void no_ac_u02_staffRole_returns403() throws Exception {
+            mockMvc.perform(patch(BASE_URL + "/{id}/activate", 2L))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.message").value("権限がありません"));
+
+            verify(userService, never()).activateUser(anyLong());
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        @DisplayName("No.AC-U-03: 存在しないIDを指定すると404が返る")
+        void no_ac_u03_nonExistingId_returns404() throws Exception {
+            when(userService.activateUser(999L))
+                    .thenThrow(new ResourceNotFoundException("利用者が見つかりません: 999"));
+
+            mockMvc.perform(patch(BASE_URL + "/{id}/activate", 999L))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message").value("利用者が見つかりません: 999"));
         }
     }
 

@@ -268,6 +268,61 @@ class OfficeControllerTest {
     }
 
     // ============================================================
+    // PATCH /api/offices/{id}/activate
+    // ============================================================
+    @Nested
+    @DisplayName("PATCH /api/offices/{id}/activate — 事業所有効化")
+    class ActivateOffice {
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        @DisplayName("No.AC-O-01: ADMIN権限で実行すると有効化され200が返る")
+        void no_ac_o01_adminRole_activatesAndReturns200() throws Exception {
+            OfficeResponse activated = OfficeResponse.builder()
+                    .id(2L).name("廃止事業所").isActive(true).build();
+            when(officeService.activateOffice(2L)).thenReturn(activated);
+
+            mockMvc.perform(patch(BASE_URL + "/{id}/activate", 2L))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(2))
+                    .andExpect(jsonPath("$.isActive").value(true));
+
+            verify(officeService).activateOffice(2L);
+        }
+
+        @Test
+        @WithMockUser(roles = "STAFF")
+        @DisplayName("No.AC-O-02: STAFF権限でも有効化できる（OfficeControllerにはロール制限なし）")
+        void no_ac_o02_staffRole_activatesSuccessfully() throws Exception {
+            OfficeResponse activated = OfficeResponse.builder()
+                    .id(2L).name("廃止事業所").isActive(true).build();
+            when(officeService.activateOffice(2L)).thenReturn(activated);
+
+            mockMvc.perform(patch(BASE_URL + "/{id}/activate", 2L))
+                    .andExpect(status().isOk());
+        }
+
+        @Test
+        @WithMockUser(roles = "ADMIN")
+        @DisplayName("No.AC-O-03: 存在しないIDを指定すると404が返る")
+        void no_ac_o03_nonExistingId_returns404() throws Exception {
+            when(officeService.activateOffice(999L))
+                    .thenThrow(new ResourceNotFoundException("事業所が見つかりません: 999"));
+
+            mockMvc.perform(patch(BASE_URL + "/{id}/activate", 999L))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.message").value("事業所が見つかりません: 999"));
+        }
+
+        @Test
+        @DisplayName("No.AC-O-04: 未認証でアクセスすると401が返る")
+        void no_ac_o04_unauthenticated_returns401() throws Exception {
+            mockMvc.perform(patch(BASE_URL + "/{id}/activate", 2L))
+                    .andExpect(status().isUnauthorized());
+        }
+    }
+
+    // ============================================================
     // DELETE /api/offices/{id}
     // ============================================================
     @Nested
